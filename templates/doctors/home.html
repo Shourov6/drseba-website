@@ -1,0 +1,612 @@
+{% extends 'base.html' %}
+
+{% block title %}DrSeba.com - Find Your Trusted Doctor{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h1 class="display-4 fw-bold mb-3">
+                    Find Your <span class="text-primary">Trusted</span> Doctor
+                </h1>
+                <p class="text-muted mb-4">Book appointments with verified doctors across Bangladesh</p>
+                
+                <!-- Search Box -->
+                <div class="search-box bg-white rounded-4 shadow-lg p-3 mb-5">
+                    <form action="{% url 'doctors:doctor_list' %}" method="get">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="bi bi-search text-muted"></i>
+                                    </span>
+                                    <input type="text" name="q" class="form-control border-start-0" placeholder="Search by doctor name, specialty, hospital...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="bi bi-geo-alt text-muted"></i>
+                                    </span>
+                                    <select class="form-select border-start-0">
+                                        <option>All Districts</option>
+                                        <option>Dhaka</option>
+                                        <option>Chittagong</option>
+                                        <option>Khulna</option>
+                                        <option>Rajshahi</option>
+                                        <option>Sylhet</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">Search</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Service Cards -->
+        <div class="row g-4 mb-5">
+            {% for service in services %}
+            <div class="col-6 col-md-3">
+                <a href="{{ service.url|default:'#' }}" class="text-decoration-none">
+                    <div class="service-card bg-white rounded-4 p-4 text-center shadow-sm h-100">
+                        <div class="service-icon mb-3">
+                            <i class="bi {{ service.icon }} fs-2 text-primary"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">{{ service.name }}</h6>
+                        <p class="text-muted small mb-0">{{ service.description }}</p>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+            <div class="col-6 col-md-3">
+                <div class="service-card bg-white rounded-4 p-4 text-center shadow-sm">
+                    <div class="service-icon mb-3">
+                        <i class="bi bi-search-heart fs-2 text-primary"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Doctor Search</h6>
+                    <p class="text-muted small mb-0">Find specialist doctors</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="service-card bg-white rounded-4 p-4 text-center shadow-sm">
+                    <div class="service-icon mb-3">
+                        <i class="bi bi-clipboard2-pulse fs-2 text-success"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Diagnostic</h6>
+                    <p class="text-muted small mb-0">Book lab tests</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="service-card bg-white rounded-4 p-4 text-center shadow-sm">
+                    <div class="service-icon mb-3">
+                        <i class="bi bi-truck-medical fs-2 text-danger"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Ambulance</h6>
+                    <p class="text-muted small mb-0">Emergency transport</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="service-card bg-white rounded-4 p-4 text-center shadow-sm">
+                    <div class="service-icon mb-3">
+                        <i class="bi bi-hospital fs-2 text-info"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">ICU / NICU</h6>
+                    <p class="text-muted small mb-0">Bed availability</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Statistics -->
+        <div class="row g-4 justify-content-center">
+            {% for stat in statistics %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="stat-card text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="bi {{ stat.icon }} fs-1 text-primary"></i>
+                    </div>
+                    <h3 class="fw-bold mb-0">{{ stat.value }}</h3>
+                    <p class="text-muted mb-0">{{ stat.label }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="stat-card text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="bi bi-people fs-1 text-primary"></i>
+                    </div>
+                    <h3 class="fw-bold mb-0">15,000+</h3>
+                    <p class="text-muted mb-0">Verified Doctors</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="stat-card text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="bi bi-hospital fs-1 text-success"></i>
+                    </div>
+                    <h3 class="fw-bold mb-0">500+</h3>
+                    <p class="text-muted mb-0">Partner Hospitals</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="stat-card text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="bi bi-emoji-smile fs-1 text-warning"></i>
+                    </div>
+                    <h3 class="fw-bold mb-0">100,000+</h3>
+                    <p class="text-muted mb-0">Happy Patients</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Popular Specialties Section -->
+<section class="specialties-section py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Popular Specialties</h2>
+            <p class="text-muted">Find doctors by specialty</p>
+        </div>
+        
+        <div class="row g-4">
+            {% for specialty in specialties %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="{% url 'doctors:doctor_list' %}?specialty={{ specialty.id }}" class="text-decoration-none">
+                    <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm h-100" style="border-top: 3px solid {{ specialty.color }}">
+                        <div class="specialty-icon mb-3" style="color: {{ specialty.color }}">
+                            {% if specialty.icon|slice:":2" == "bi" %}
+                                <i class="bi {{ specialty.icon }} fs-2"></i>
+                            {% else %}
+                                <span class="fs-2">{{ specialty.icon }}</span>
+                            {% endif %}
+                        </div>
+                        <h6 class="fw-bold text-dark mb-0">{{ specialty.name }}</h6>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #dc3545;">
+                    <div class="specialty-icon mb-3 text-danger">
+                        <i class="bi bi-heart-pulse fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Cardiologist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #0dcaf0;">
+                    <div class="specialty-icon mb-3 text-info">
+                        <i class="bi bi-emoji-smile fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Dentist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #0d6efd;">
+                    <div class="specialty-icon mb-3 text-primary">
+                        <i class="bi bi-eye fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Ophthalmologist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #fd7e14;">
+                    <div class="specialty-icon mb-3" style="color: #fd7e14;">
+                        <i class="bi bi-bandaid fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Orthopedic</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #6f42c1;">
+                    <div class="specialty-icon mb-3" style="color: #6f42c1;">
+                        <i class="bi bi-activity fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Neurologist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #20c997;">
+                    <div class="specialty-icon mb-3" style="color: #20c997;">
+                        <i class="bi bi-person fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Dermatologist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #198754;">
+                    <div class="specialty-icon mb-3 text-success">
+                        <i class="bi bi-capsule fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Medicine Specialist</h6>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="specialty-card bg-white rounded-4 p-4 text-center shadow-sm" style="border-top: 3px solid #d63384;">
+                    <div class="specialty-icon mb-3" style="color: #d63384;">
+                        <i class="bi bi-gender-female fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0">Gynecologist</h6>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="{% url 'doctors:specialty_list' %}" class="btn btn-primary">
+                View All Specialties <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Doctors Section -->
+<section class="doctors-section py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">Featured Doctors</h2>
+                <p class="text-muted mb-0">Top rated doctors you can trust</p>
+            </div>
+            <a href="{% url 'doctors:doctor_list' %}" class="btn btn-link text-decoration-none">
+                View All <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        
+        <div class="row g-4">
+            {% for doctor in featured_doctors %}
+            <div class="col-md-6 col-lg-4">
+                <div class="doctor-card bg-white rounded-4 shadow-sm overflow-hidden">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="doctor-image me-3">
+                                {% if doctor.image %}
+                                    <img src="{{ doctor.image.url }}" alt="{{ doctor.name }}" class="rounded-circle" width="60" height="60">
+                                {% else %}
+                                    <div class="doctor-avatar rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width: 60px; height: 60px;">
+                                        <i class="bi bi-person fs-3"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <h6 class="fw-bold mb-0">Dr. {{ doctor.name }}</h6>
+                                    {% if doctor.is_verified %}
+                                        <i class="bi bi-check-circle-fill text-success ms-2 small" title="Verified"></i>
+                                    {% endif %}
+                                </div>
+                                <p class="text-primary small mb-1">{{ doctor.specialty.name }}</p>
+                                <p class="text-muted small mb-0">{{ doctor.experience_years }} years exp.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="rating">
+                                <span class="text-warning">
+                                    {% for i in "12345"|make_list %}
+                                        {% if forloop.counter <= doctor.rating %}
+                                            <i class="bi bi-star-fill small"></i>
+                                        {% else %}
+                                            <i class="bi bi-star small"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                <span class="small text-muted">({{ doctor.review_count }})</span>
+                            </div>
+                            <div class="fee text-end">
+                                <p class="text-muted small mb-0">Consultation</p>
+                                <p class="fw-bold text-primary mb-0">৳{{ doctor.consultation_fee }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'doctors:doctor_detail' doctor.pk %}" class="btn btn-outline-primary flex-grow-1 btn-sm">View Profile</a>
+                            <a href="#" class="btn btn-primary flex-grow-1 btn-sm">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <!-- Sample doctors when no data -->
+            <div class="col-md-6 col-lg-4">
+                <div class="doctor-card bg-white rounded-4 shadow-sm overflow-hidden">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="doctor-avatar rounded-circle d-flex align-items-center justify-content-center bg-primary text-white me-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-person fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <h6 class="fw-bold mb-0">Dr. Mohammad Rahman</h6>
+                                    <i class="bi bi-check-circle-fill text-success ms-2 small"></i>
+                                </div>
+                                <p class="text-primary small mb-1">Cardiologist</p>
+                                <p class="text-muted small mb-0">15 years exp.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="rating">
+                                <span class="text-warning">
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-half small"></i>
+                                </span>
+                                <span class="small text-muted">(256)</span>
+                            </div>
+                            <div class="fee text-end">
+                                <p class="text-muted small mb-0">Consultation</p>
+                                <p class="fw-bold text-primary mb-0">৳1500</p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="#" class="btn btn-outline-primary flex-grow-1 btn-sm">View Profile</a>
+                            <a href="#" class="btn btn-primary flex-grow-1 btn-sm">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="doctor-card bg-white rounded-4 shadow-sm overflow-hidden">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="doctor-avatar rounded-circle d-flex align-items-center justify-content-center bg-success text-white me-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-person fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <h6 class="fw-bold mb-0">Dr. Fatima Sultana</h6>
+                                    <i class="bi bi-check-circle-fill text-success ms-2 small"></i>
+                                </div>
+                                <p class="text-primary small mb-1">Gynecologist</p>
+                                <p class="text-muted small mb-0">12 years exp.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="rating">
+                                <span class="text-warning">
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                </span>
+                                <span class="small text-muted">(342)</span>
+                            </div>
+                            <div class="fee text-end">
+                                <p class="text-muted small mb-0">Consultation</p>
+                                <p class="fw-bold text-primary mb-0">৳1200</p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="#" class="btn btn-outline-primary flex-grow-1 btn-sm">View Profile</a>
+                            <a href="#" class="btn btn-primary flex-grow-1 btn-sm">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="doctor-card bg-white rounded-4 shadow-sm overflow-hidden">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="doctor-avatar rounded-circle d-flex align-items-center justify-content-center bg-info text-white me-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-person fs-3"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <h6 class="fw-bold mb-0">Dr. Shahidul Islam</h6>
+                                    <i class="bi bi-check-circle-fill text-success ms-2 small"></i>
+                                </div>
+                                <p class="text-primary small mb-1">Medicine Specialist</p>
+                                <p class="text-muted small mb-0">20 years exp.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="rating">
+                                <span class="text-warning">
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-half small"></i>
+                                </span>
+                                <span class="small text-muted">(189)</span>
+                            </div>
+                            <div class="fee text-end">
+                                <p class="text-muted small mb-0">Consultation</p>
+                                <p class="fw-bold text-primary mb-0">৳1000</p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="#" class="btn btn-outline-primary flex-grow-1 btn-sm">View Profile</a>
+                            <a href="#" class="btn btn-primary flex-grow-1 btn-sm">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="how-it-works-section py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">How It Works</h2>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4 text-center">
+                <div class="step-card">
+                    <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <span class="fs-4 fw-bold">1</span>
+                    </div>
+                    <h5 class="fw-bold">Search Doctor</h5>
+                    <p class="text-muted">Find verified doctors by specialty, location, or name</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="step-card">
+                    <div class="step-number bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <span class="fs-4 fw-bold">2</span>
+                    </div>
+                    <h5 class="fw-bold">Book Appointment</h5>
+                    <p class="text-muted">Choose your preferred date and time slot</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="step-card">
+                    <div class="step-number bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <span class="fs-4 fw-bold">3</span>
+                    </div>
+                    <h5 class="fw-bold">Visit Doctor</h5>
+                    <p class="text-muted">Get consultation online or visit the chamber</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Partner Hospitals Section -->
+<section class="hospitals-section py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Our Partner Hospitals</h2>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            {% for hospital in hospitals %}
+            <div class="col-6 col-md-3">
+                <div class="hospital-card bg-white rounded-4 p-3 shadow-sm text-center">
+                    {% if hospital.image %}
+                        <img src="{{ hospital.image.url }}" alt="{{ hospital.name }}" class="img-fluid rounded-3 mb-2" style="max-height: 80px;">
+                    {% else %}
+                        <div class="hospital-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center mb-2" style="height: 80px;">
+                            <i class="bi bi-hospital fs-1 text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <p class="fw-bold mb-0 small">{{ hospital.name }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-6 col-md-3">
+                <div class="hospital-card bg-white rounded-4 p-3 shadow-sm text-center">
+                    <div class="hospital-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center mb-2" style="height: 80px;">
+                        <i class="bi bi-hospital fs-1 text-muted"></i>
+                    </div>
+                    <p class="fw-bold mb-0 small">Square Hospital</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="hospital-card bg-white rounded-4 p-3 shadow-sm text-center">
+                    <div class="hospital-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center mb-2" style="height: 80px;">
+                        <i class="bi bi-hospital fs-1 text-muted"></i>
+                    </div>
+                    <p class="fw-bold mb-0 small">Apollo Hospital</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="hospital-card bg-white rounded-4 p-3 shadow-sm text-center">
+                    <div class="hospital-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center mb-2" style="height: 80px;">
+                        <i class="bi bi-hospital fs-1 text-muted"></i>
+                    </div>
+                    <p class="fw-bold mb-0 small">United Hospital</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="hospital-card bg-white rounded-4 p-3 shadow-sm text-center">
+                    <div class="hospital-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center mb-2" style="height: 80px;">
+                        <i class="bi bi-hospital fs-1 text-muted"></i>
+                    </div>
+                    <p class="fw-bold mb-0 small">Labaid Hospital</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="testimonials-section py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">What Patients Say</h2>
+        </div>
+        
+        <div class="row g-4">
+            {% for testimonial in testimonials %}
+            <div class="col-md-4">
+                <div class="testimonial-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="rating mb-3 text-warning">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= testimonial.rating %}
+                                <i class="bi bi-star-fill"></i>
+                            {% else %}
+                                <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted mb-3">"{{ testimonial.content }}"</p>
+                    <p class="fw-bold mb-0">{{ testimonial.name }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-md-4">
+                <div class="testimonial-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="rating mb-3 text-warning">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-muted mb-3">"Excellent service! Found a great cardiologist within minutes."</p>
+                    <p class="fw-bold mb-0">Rahim Ahmed</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="rating mb-3 text-warning">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-muted mb-3">"Very easy to use. Booked appointment online and saved time."</p>
+                    <p class="fw-bold mb-0">Nusrat Jahan</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="rating mb-3 text-warning">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-muted mb-3">"Trustworthy platform with verified doctors. Highly recommended!"</p>
+                    <p class="fw-bold mb-0">Karim Mia</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Chat Button -->
+<a href="#" class="chat-button btn btn-primary rounded-circle position-fixed" style="bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 1000;">
+    <i class="bi bi-chat-dots-fill fs-4"></i>
+</a>
+{% endblock %}

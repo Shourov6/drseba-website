@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Doctors - DrSeba.com{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <!-- Page Header -->
+        <div class="text-center mb-5">
+            <h1 class="fw-bold">Find Doctors</h1>
+            <p class="text-muted">Search and book appointments with verified doctors</p>
+        </div>
+        
+        <!-- Search and Filter -->
+        <div class="card shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <form method="get" class="row g-3">
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" name="q" class="form-control" placeholder="Search by doctor name, specialty..." value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="bi bi-heart-pulse text-muted"></i>
+                            </span>
+                            <select name="specialty" class="form-select">
+                                <option value="">All Specialties</option>
+                                {% for specialty in specialties %}
+                                    <option value="{{ specialty.id }}" {% if selected_specialty == specialty.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ specialty.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search me-2"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Results Count -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <p class="text-muted mb-0">Showing {{ doctors|length }} doctors</p>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" data-bs-toggle="dropdown">
+                    Sort by: Recommended
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Recommended</a></li>
+                    <li><a class="dropdown-item" href="#">Rating: High to Low</a></li>
+                    <li><a class="dropdown-item" href="#">Experience: High to Low</a></li>
+                    <li><a class="dropdown-item" href="#">Fee: Low to High</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Doctors Grid -->
+        <div class="row g-4">
+            {% for doctor in doctors %}
+            <div class="col-md-6 col-lg-4">
+                <div class="doctor-card bg-white rounded-4 shadow-sm overflow-hidden h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="doctor-image me-3">
+                                {% if doctor.image %}
+                                    <img src="{{ doctor.image.url }}" alt="{{ doctor.name }}" class="rounded-circle" width="70" height="70">
+                                {% else %}
+                                    <div class="doctor-avatar rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width: 70px; height: 70px;">
+                                        <i class="bi bi-person fs-2"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center">
+                                    <h6 class="fw-bold mb-0">Dr. {{ doctor.name }}</h6>
+                                    {% if doctor.is_verified %}
+                                        <i class="bi bi-check-circle-fill text-success ms-2 small" title="Verified"></i>
+                                    {% endif %}
+                                </div>
+                                <p class="text-primary small mb-1">{{ doctor.specialty.name }}</p>
+                                <p class="text-muted small mb-0">{{ doctor.experience_years }} years experience</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="rating">
+                                <span class="text-warning">
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                    <i class="bi bi-star-fill small"></i>
+                                </span>
+                                <span class="small text-muted">({{ doctor.review_count }} reviews)</span>
+                            </div>
+                            <div class="fee text-end">
+                                <p class="text-muted small mb-0">Consultation Fee</p>
+                                <p class="fw-bold text-primary mb-0">৳{{ doctor.consultation_fee }}</p>
+                            </div>
+                        </div>
+                        
+                        {% if doctor.hospital %}
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-hospital me-1"></i> {{ doctor.hospital.name }}
+                            </p>
+                        {% endif %}
+                        
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'doctors:doctor_detail' doctor.pk %}" class="btn btn-outline-primary flex-grow-1 btn-sm">View Profile</a>
+                            <a href="#" class="btn btn-primary flex-grow-1 btn-sm">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No doctors found</h5>
+                <p class="text-muted">Try adjusting your search criteria</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
