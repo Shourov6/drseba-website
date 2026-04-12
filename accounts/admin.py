@@ -29,40 +29,10 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(PatientProfile)
 class PatientProfileAdmin(admin.ModelAdmin):
     """Patient Profile Admin"""
-    list_display = ['user', 'age', 'gender', 'blood_group', 'city', 'district']
-    list_filter = ['gender', 'blood_group', 'city', 'district', 'marital_status', 'smoking_status', 'alcohol_consumption']
-    search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name', 'city', 'district']
+    list_display = ['user', 'date_of_birth', 'gender', 'blood_group', 'city']
+    list_filter = ['gender', 'blood_group', 'city', 'district']
+    search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name']
     filter_horizontal = ['favorite_doctors']
-    readonly_fields = ['created_at', 'updated_at']
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('user', 'created_at', 'updated_at')
-        }),
-        ('Demographics', {
-            'fields': ('date_of_birth', 'gender', 'marital_status', 'occupation', 'number_of_children')
-        }),
-        ('Health Metrics', {
-            'fields': ('blood_group', 'height', 'weight')
-        }),
-        ('Contact Information', {
-            'fields': ('address', 'city', 'district', 'emergency_contact_name', 'emergency_contact_phone', 
-                      'emergency_contact', 'secondary_emergency_contact')
-        }),
-        ('Lifestyle', {
-            'fields': ('smoking_status', 'alcohol_consumption')
-        }),
-        ('Medical History', {
-            'fields': ('medical_history', 'chronic_diseases', 'surgical_history', 'family_medical_history', 
-                      'allergies', 'current_medications', 'last_checkup_date', 'notes_for_doctor')
-        }),
-        ('Insurance', {
-            'fields': ('insurance_provider', 'insurance_policy_number')
-        }),
-        ('Preferences', {
-            'fields': ('profile_picture', 'favorite_doctors', 'preferred_communication')
-        }),
-    )
 
 
 @admin.register(EmployeeProfile)
