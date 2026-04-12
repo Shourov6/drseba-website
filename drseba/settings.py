@@ -144,6 +144,29 @@ LOGOUT_REDIRECT_URL = '/'
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
+# CSRF settings - Allow localhost and external domains (Serveo, ngrok)
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'http://localhost',
+    'http://127.0.0.1',
+    'https://127.0.0.1:8000',
+    'https://localhost:8000',
+    'https://localhost',
+    'https://127.0.0.1',
+]
+
+# Add any *.serveo.net domains
+CSRF_TRUSTED_ORIGINS += [
+    'https://*.serveo.net',
+    'http://*.serveo.net',
+]
+
+# CSRF Cookie settings
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_HTTPONLY = False  # Must be False for JavaScript to access CSRF token via forms
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+
 # Message tags
 from django.contrib.messages import constants as messages
 MESSAGE_TAGS = {
