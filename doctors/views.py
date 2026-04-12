@@ -21,7 +21,7 @@ def doctor_list(request):
     consultation_type = request.GET.get('type')
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
-    search_query = request.GET.get('q')
+    search_query = request.GET.get('q', '')
     district = request.GET.get('district')
     
     # Apply filters

@@ -71,7 +71,7 @@ def home(request):
     featured_doctors = Doctor.objects.filter(is_active=True).order_by('-created_at')[:3]
     
     # Get featured reviews (top 3 recent reviews)
-    featured_reviews = Review.objects.filter(is_approved=True).order_by('-created_at')[:3]
+    featured_reviews = Review.objects.filter(is_active=True).order_by('-created_at')[:3]
     
     # Get partner hospitals (any active hospitals, limit to 3)
     partner_hospitals = Hospital.objects.filter(is_active=True).order_by('-created_at')[:3]

@@ -264,28 +264,31 @@
             <h2 class="fw-bold">{{ translations.partner_hospitals_title }}</h2>
         </div>
         
+        {% if partner_hospitals %}
         <div class="row g-4 justify-content-center">
+            {% for hospital in partner_hospitals %}
+            <!-- Dynamic Hospital Card -->
             <div class="col-md-3 col-6">
                 <div class="bg-white p-4 rounded shadow-sm text-center">
-                    <img src="https://via.placeholder.com/150x80?text=Square+Hospital" class="img-fluid" alt="Hospital 1" style="filter: grayscale(100%);">
+                    {% if hospital.logo %}
+                        <img src="{{ hospital.logo.url }}" class="img-fluid" alt="{{ hospital.name }}" style="filter: grayscale(100%); max-height: 80px;">
+                    {% else %}
+                        <div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #999;">
+                            <p class="mb-0">{{ hospital.name }}</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="bg-white p-4 rounded shadow-sm text-center">
-                    <img src="https://via.placeholder.com/150x80?text=Apollo+Hospital" class="img-fluid" alt="Hospital 2" style="filter: grayscale(100%);">
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="bg-white p-4 rounded shadow-sm text-center">
-                    <img src="https://via.placeholder.com/150x80?text=United+Hospital" class="img-fluid" alt="Hospital 3" style="filter: grayscale(100%);">
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="bg-white p-4 rounded shadow-sm text-center">
-                    <img src="https://via.placeholder.com/150x80?text=Labaid+Hospital" class="img-fluid" alt="Hospital 4" style="filter: grayscale(100%);">
-                </div>
-            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <!-- No hospitals yet -->
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No partner hospitals available yet.</strong><br>
+            <small>Partner hospital logos will appear here after admin adds them.</small>
+        </div>
+        {% endif %}
     </div>
 </section>
 

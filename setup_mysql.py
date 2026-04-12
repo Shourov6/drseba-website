@@ -25,6 +25,7 @@ def create_mysql_database():
         'password',
         'mysql',
         'DrsebaPwd123!@#',
+        'Mafia666',  # User's custom root password
     ]
     
     connection = None
