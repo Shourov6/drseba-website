@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments - DrSeva.com{% endblock %}
+{% block page_title %}Payments{% endblock %}
+
+{% block content %}
+<div class="payment-summary">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon green">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +23.1%
+            </span>
+        </div>
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value">৳{{ total_revenue|floatformat:0 }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon orange">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <span class="stat-trend trend-down">
+                <i class="fas fa-arrow-down"></i> -5.2%
+            </span>
+        </div>
+        <div class="stat-label">Pending Payments</div>
+        <div class="stat-value">৳{{ pending_payments|floatformat:0 }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon red">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <span class="stat-trend trend-down">
+                <i class="fas fa-arrow-down"></i> -12.3%
+            </span>
+        </div>
+        <div class="stat-label">Overdue Amount</div>
+        <div class="stat-value">৳{{ overdue_payments|floatformat:0 }}</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-header">
+        <div class="table-actions">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search payments..." value="{{ search }}" onkeyup="searchPayments(this.value)">
+            </div>
+            <select class="filter-dropdown" onchange="filterByStatus(this.value)">
+                <option value="">All Status</option>
+                <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
+                <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                <option value="Overdue" {% if status_filter == 'Overdue' %}selected{% endif %}>Overdue</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-export" onclick="exportReport()">
+                <i class="fas fa-download"></i>
+                Export Report
+            </button>
+            <a href="{% url 'payment_add' %}" class="btn-add">
+                <i class="fas fa-plus"></i>
+                Add Payment
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive" style="overflow-x: auto;">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Invoice ID</th>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Consultation Fee</th>
+                    <th>Service Charge</th>
+                    <th>Total Amount</th>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td><span style="font-family: monospace; font-weight: 600; color: var(--primary-color);">{{ payment.invoice_id }}</span></td>
+                    <td>
+                        <a href="{% url 'patient_detail' payment.patient.id %}" style="color: var(--primary-color); font-weight: 500; text-decoration: none;">
+                            {{ payment.patient.name }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'doctor_detail' payment.doctor.doctor_id %}" style="color: var(--primary-color); font-weight: 500; text-decoration: none;">
+                            Dr. {{ payment.doctor.name }}
+                        </a>
+                    </td>
+                    <td>৳{{ payment.consultation_fee }}</td>
+                    <td>৳{{ payment.service_charge }}</td>
+                    <td style="font-weight: 600;">৳{{ payment.total_amount }}</td>
+                    <td>{{ payment.payment_date|date:"Y-m-d" }}</td>
+                    <td>
+                        <i class="{% if payment.payment_method == 'Credit Card' %}far fa-credit-card{% elif payment.payment_method == 'Cash' %}fas fa-money-bill-wave{% elif payment.payment_method == 'Insurance' %}fas fa-shield-alt{% else %}fas fa-university{% endif %}" style="color: #9ca3af; margin-right: 6px;"></i>
+                        {{ payment.payment_method }}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ payment.status|lower }}">{{ payment.status }}</span>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{% url 'payment_invoice' payment.invoice_id %}" class="action-btn view">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'payment_edit' payment.invoice_id %}" class="action-btn edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'payment_delete' payment.invoice_id %}" class="action-btn delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-4">No payments found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function searchPayments(query) {
+    if (event.key === 'Enter') {
+        window.location.href = `?search=${query}&status={{ status_filter }}`;
+    }
+}
+
+function filterByStatus(status) {
+    window.location.href = `?search={{ search }}&status=${status}`;
+}
+
+function exportReport() {
+    alert('Export functionality will be implemented here');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Payment - DrSeva.com{% endblock %}
+{% block page_title %}Add New Payment{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Patient <span class="text-danger">*</span></label>
+                <select name="patient" class="form-control" required>
+                    <option value="">Select Patient</option>
+                    {% for patient in form.patient.field.queryset %}
+                    <option value="{{ patient.id }}">{{ patient.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Doctor <span class="text-danger">*</span></label>
+                <select name="doctor" class="form-control" required>
+                    <option value="">Select Doctor</option>
+                    {% for doctor in form.doctor.field.queryset %}
+                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Consultation Fee (৳)</label>
+                <input type="number" name="consultation_fee" class="form-control" placeholder="Consultation Fee" value="0" step="0.01">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Service Charge (৳)</label>
+                <input type="number" name="service_charge" class="form-control" placeholder="Service Charge" value="0" step="0.01">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Payment Method</label>
+                <select name="payment_method" class="form-control">
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Insurance">Insurance</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Payment Date</label>
+                <input type="date" name="payment_date" class="form-control" value="{% now 'Y-m-d' %}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Payment
+            </button>
+            <a href="{% url 'payments_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

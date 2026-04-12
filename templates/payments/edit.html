@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Payment - DrSeva.com{% endblock %}
+{% block page_title %}Edit Payment{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Invoice ID</label>
+                <input type="text" class="form-control" value="{{ payment.invoice_id }}" disabled>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Patient</label>
+                <input type="text" class="form-control" value="{{ payment.patient.name }}" disabled>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Doctor</label>
+                <input type="text" class="form-control" value="Dr. {{ payment.doctor.name }}" disabled>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Total Amount</label>
+                <input type="text" class="form-control" value="৳{{ payment.total_amount }}" disabled>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Consultation Fee (৳)</label>
+                <input type="number" name="consultation_fee" class="form-control" value="{{ payment.consultation_fee }}" step="0.01">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Service Charge (৳)</label>
+                <input type="number" name="service_charge" class="form-control" value="{{ payment.service_charge }}" step="0.01">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Payment Method</label>
+                <select name="payment_method" class="form-control">
+                    <option value="Credit Card" {% if payment.payment_method == 'Credit Card' %}selected{% endif %}>Credit Card</option>
+                    <option value="Debit Card" {% if payment.payment_method == 'Debit Card' %}selected{% endif %}>Debit Card</option>
+                    <option value="Cash" {% if payment.payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+                    <option value="Insurance" {% if payment.payment_method == 'Insurance' %}selected{% endif %}>Insurance</option>
+                    <option value="Bank Transfer" {% if payment.payment_method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Payment Date</label>
+                <input type="date" name="payment_date" class="form-control" value="{{ payment.payment_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="Pending" {% if payment.status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Paid" {% if payment.status == 'Paid' %}selected{% endif %}>Paid</option>
+                    <option value="Overdue" {% if payment.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Update Payment
+            </button>
+            <a href="{% url 'payments_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

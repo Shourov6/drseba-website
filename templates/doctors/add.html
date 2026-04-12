@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Doctor - DrSeva.com{% endblock %}
+{% block page_title %}Add New Doctor{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post" enctype="multipart/form-data" id="doctorForm">
+        {% csrf_token %}
+        
+        <!-- Step 1: Basic Information -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-user-circle me-2"></i>Step 1: Basic Information
+            </h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Profile Photo</label>
+                    <input type="file" name="profile_photo" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" placeholder="Doctor Name" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Age <span class="text-danger">*</span></label>
+                    <input type="number" name="age" class="form-control" placeholder="Age" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Gender <span class="text-danger">*</span></label>
+                    <select name="gender" class="form-control" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Phone <span class="text-danger">*</span></label>
+                    <input type="text" name="phone" class="form-control" placeholder="Phone Number" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" name="email" class="form-control" placeholder="Email Address" required>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Step 2: Professional Details -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-graduation-cap me-2"></i>Step 2: Professional Details
+            </h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Qualification <span class="text-danger">*</span></label>
+                    <input type="text" name="qualification" class="form-control" placeholder="e.g., MBBS, MD (Cardiology)" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Specialty <span class="text-danger">*</span></label>
+                    <input type="text" name="specialty" class="form-control" placeholder="e.g., Cardiology" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Experience (Years) <span class="text-danger">*</span></label>
+                    <input type="number" name="experience" class="form-control" placeholder="Years of Experience" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Medical License Number <span class="text-danger">*</span></label>
+                    <input type="text" name="medical_license_number" class="form-control" placeholder="License Number" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Commission %</label>
+                    <input type="number" name="commission_percentage" class="form-control" step="0.01" value="5.00">
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">About Doctor</label>
+                    <textarea name="about" class="form-control" rows="3" placeholder="About Doctor"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Step 3: Hospital & Availability -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-hospital me-2"></i>Step 3: Hospital & Availability
+            </h5>
+            <div id="hospitalSchedules">
+                <div class="hospital-schedule card p-3 mb-3" style="background: #f9fafb;">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Hospital <span class="text-danger">*</span></label>
+                            <select name="hospital[]" class="form-control" required>
+                                <option value="">Select Hospital</option>
+                                {% for hospital in hospitals %}
+                                <option value="{{ hospital.id }}">{{ hospital.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Available Days <span class="text-danger">*</span></label>
+                            <input type="text" name="days[]" class="form-control" placeholder="e.g., Sun, Tue, Thu" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Available Time <span class="text-danger">*</span></label>
+                            <input type="text" name="time[]" class="form-control" placeholder="e.g., 09:00 - 12:00" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Consultation Fee (৳) <span class="text-danger">*</span></label>
+                            <input type="number" name="consultation_fee[]" class="form-control" placeholder="Consultation Fee" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Service Charge (৳) <span class="text-danger">*</span></label>
+                            <input type="number" name="service_charge[]" class="form-control" placeholder="Service Charge" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contact Number</label>
+                            <input type="text" name="contact_number[]" class="form-control" placeholder="Contact Number">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Chamber Address</label>
+                            <textarea name="chamber_address[]" class="form-control" rows="2" placeholder="Chamber Address"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="addHospitalSchedule()">
+                <i class="fas fa-plus me-2"></i>Add Another Hospital
+            </button>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Step 4: Consultation Language -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-language me-2"></i>Step 4: Consultation Language
+            </h5>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="consultation_language" value="Bangla" id="langBangla">
+                        <label class="form-check-label" for="langBangla">Bangla</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="consultation_language" value="English" id="langEnglish">
+                        <label class="form-check-label" for="langEnglish">English</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="consultation_language" value="Both" id="langBoth" checked>
+                        <label class="form-check-label" for="langBoth">Both</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Step 5: Appointment Settings -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-cog me-2"></i>Step 5: Appointment Settings
+            </h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="online_appointment" id="onlineAppointment" checked>
+                        <label class="form-check-label" for="onlineAppointment">Online Appointment</label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Max Patients Per Day</label>
+                    <input type="number" name="max_patients_per_day" class="form-control" value="20">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="emergency_available" id="emergencyAvailable">
+                        <label class="form-check-label" for="emergencyAvailable">Emergency Available</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Step 6: Documents Upload -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: var(--primary-color);">
+                <i class="fas fa-file-upload me-2"></i>Step 6: Documents Upload
+            </h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Certificates</label>
+                    <input type="file" name="certificates" class="form-control" accept=".pdf,.jpg,.png">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">ID Proof</label>
+                    <input type="file" name="id_proof" class="form-control" accept=".pdf,.jpg,.png">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">License Document</label>
+                    <input type="file" name="license_document" class="form-control" accept=".pdf,.jpg,.png">
+                </div>
+            </div>
+            <small class="text-muted">Accepted formats: PDF, JPG, PNG (max 5MB)</small>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Status -->
+        <div class="mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Doctor
+            </button>
+            <a href="{% url 'doctors_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function addHospitalSchedule() {
+    const container = document.getElementById('hospitalSchedules');
+    const schedule = document.createElement('div');
+    schedule.className = 'hospital-schedule card p-3 mb-3';
+    schedule.style.background = '#f9fafb';
+    schedule.innerHTML = `
+        <div class="d-flex justify-content-between mb-3">
+            <span class="fw-bold text-muted">Additional Hospital</span>
+            <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.hospital-schedule').remove()">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Hospital <span class="text-danger">*</span></label>
+                <select name="hospital[]" class="form-control" required>
+                    <option value="">Select Hospital</option>
+                    {% for hospital in hospitals %}
+                    <option value="{{ hospital.id }}">{{ hospital.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Available Days <span class="text-danger">*</span></label>
+                <input type="text" name="days[]" class="form-control" placeholder="e.g., Sun, Tue, Thu" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Available Time <span class="text-danger">*</span></label>
+                <input type="text" name="time[]" class="form-control" placeholder="e.g., 09:00 - 12:00" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Consultation Fee (৳) <span class="text-danger">*</span></label>
+                <input type="number" name="consultation_fee[]" class="form-control" placeholder="Consultation Fee" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Service Charge (৳) <span class="text-danger">*</span></label>
+                <input type="number" name="service_charge[]" class="form-control" placeholder="Service Charge" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Contact Number</label>
+                <input type="text" name="contact_number[]" class="form-control" placeholder="Contact Number">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Chamber Address</label>
+                <textarea name="chamber_address[]" class="form-control" rows="2" placeholder="Chamber Address"></textarea>
+            </div>
+        </div>
+    `;
+    container.appendChild(schedule);
+}
+</script>
+{% endblock %}

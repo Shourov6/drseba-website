@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Employee Dashboard - DrSeva.com{% endblock %}
+{% block page_title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 16px 16px 0 0;">
+                {% if employee.profile_photo %}
+                <img src="{{ employee.profile_photo.url }}" alt="{{ employee.name }}" class="rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover; border: 4px solid white;">
+                {% else %}
+                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; background: white; color: #f97316; font-size: 40px; font-weight: 700;">
+                    {{ employee.name|first|upper }}
+                </div>
+                {% endif %}
+                <h4 class="mb-1">{{ employee.name }}</h4>
+                <p class="mb-0 opacity-75">{{ employee.employee_id }}</p>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <span class="text-muted">Role:</span>
+                    <span class="float-end">
+                        <span class="badge {% if employee.role == 'Admin' %}bg-primary{% else %}bg-secondary{% endif %}">{{ employee.role }}</span>
+                    </span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Status:</span>
+                    <span class="float-end">
+                        <span class="status-badge status-{{ employee.status|lower }}">{{ employee.status }}</span>
+                    </span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Phone:</span>
+                    <span class="float-end">{{ employee.phone }}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Email:</span>
+                    <span class="float-end">{{ employee.email }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header bg-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2 text-primary"></i>My Performance</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--primary-color);">{{ total_assignments }}</div>
+                        <div style="font-size: 12px; color: #6b7280;">Total Assignments</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div style="font-size: 24px; font-weight: 700; color: #10b981;">{{ confirmed_appointments }}</div>
+                        <div style="font-size: 12px; color: #6b7280;">Confirmed</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">{{ pending_appointments }}</div>
+                        <div style="font-size: 12px; color: #6b7280;">Pending</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="font-size: 24px; font-weight: 700; color: #8b5cf6;">{{ completion_rate }}%</div>
+                        <div style="font-size: 12px; color: #6b7280;">Completion Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header bg-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-calendar-check me-2 text-primary"></i>My Managed Appointments</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Date & Time</th>
+                                <th>Type</th>
+                                <th>Manager Status</th>
+                                <th>Final Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in assigned_appointments %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'patient_detail' appointment.patient.id %}" style="color: var(--primary-color); font-weight: 500; text-decoration: none;">
+                                        {{ appointment.patient.name }}
+                                    </a>
+                                </td>
+                                <td>Dr. {{ appointment.doctor.name }}</td>
+                                <td>{{ appointment.date|date:"M d" }} at {{ appointment.time|time:"h:i A" }}</td>
+                                <td>{{ appointment.appointment_type }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ appointment.manager_status|lower }}">
+                                        {{ appointment.manager_status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ appointment.final_status|lower }}">
+                                        {{ appointment.final_status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">No assigned appointments</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

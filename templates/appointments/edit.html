@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Appointment - DrSeva.com{% endblock %}
+{% block page_title %}Edit Appointment{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Appointment ID</label>
+                <input type="text" class="form-control" value="{{ appointment.appointment_id }}" disabled>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Patient</label>
+                <input type="text" class="form-control" value="{{ appointment.patient.name }}" disabled>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Doctor</label>
+                <input type="text" class="form-control" value="Dr. {{ appointment.doctor.name }}" disabled>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Date <span class="text-danger">*</span></label>
+                <input type="date" name="date" class="form-control" value="{{ appointment.date|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Time <span class="text-danger">*</span></label>
+                <input type="time" name="time" class="form-control" value="{{ appointment.time|time:'H:i' }}" required>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Appointment Type</label>
+                <select name="appointment_type" class="form-control">
+                    <option value="Consultation" {% if appointment.appointment_type == 'Consultation' %}selected{% endif %}>Consultation</option>
+                    <option value="Follow-up" {% if appointment.appointment_type == 'Follow-up' %}selected{% endif %}>Follow-up</option>
+                    <option value="Checkup" {% if appointment.appointment_type == 'Checkup' %}selected{% endif %}>Checkup</option>
+                    <option value="Emergency" {% if appointment.appointment_type == 'Emergency' %}selected{% endif %}>Emergency</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Service Charge (৳) <span class="text-danger">*</span></label>
+                <input type="number" name="service_charge" class="form-control" value="{{ appointment.service_charge }}" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Managed By</label>
+                <select name="managed_by" class="form-control">
+                    <option value="">-- Not Assigned --</option>
+                    {% for employee in form.managed_by.field.queryset %}
+                    <option value="{{ employee.id }}" {% if appointment.managed_by.id == employee.id %}selected{% endif %}>{{ employee.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-12 mb-3">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-control" rows="3">{{ appointment.notes }}</textarea>
+            </div>
+        </div>
+        
+        {% if appointment.is_distributed %}
+        <hr class="my-4">
+        <h5 class="mb-3" style="color: var(--primary-color);">Status Management</h5>
+        <p class="text-muted mb-3">Final status is automatically calculated based on Manager and Doctor status</p>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Manager Status</label>
+                <select name="manager_status" class="form-control">
+                    <option value="Confirmed" {% if appointment.manager_status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                    <option value="Pending" {% if appointment.manager_status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Cancelled" {% if appointment.manager_status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Doctor Status</label>
+                <select name="doctor_status" class="form-control">
+                    <option value="Confirmed" {% if appointment.doctor_status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                    <option value="Pending" {% if appointment.doctor_status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Cancelled" {% if appointment.doctor_status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Final Status (Auto-calculated)</label>
+                <input type="text" class="form-control" value="{{ appointment.final_status }}" disabled>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Update Appointment
+            </button>
+            <a href="{% url 'appointments_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

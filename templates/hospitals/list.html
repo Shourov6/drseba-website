@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Hospitals - DrSeva.com{% endblock %}
+{% block page_title %}Hospitals{% endblock %}
+
+{% block content %}
+<div class="sub-tabs">
+    <a href="{% url 'doctors_list' %}" class="sub-tab-btn">Doctors</a>
+    <a href="{% url 'hospitals_list' %}" class="sub-tab-btn active">Hospitals</a>
+</div>
+
+<div class="table-header" style="margin-bottom: 20px;">
+    <div class="table-actions">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search hospitals..." value="{{ search }}" onkeyup="searchHospitals(this.value)">
+        </div>
+        <select class="filter-dropdown" onchange="filterByStatus(this.value)">
+            <option value="">All Status</option>
+            <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+    </div>
+    <a href="{% url 'hospital_add' %}" class="btn-add">
+        <i class="fas fa-plus"></i>
+        Add New
+    </a>
+</div>
+
+<div class="hospital-grid">
+    {% for hospital in hospitals %}
+    <div class="hospital-card">
+        <div class="hospital-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="hospital-icon"><i class="fas fa-hospital"></i></div>
+                <div class="hospital-info">
+                    <h4>{{ hospital.name }}</h4>
+                    <span><i class="fas fa-map-marker-alt" style="color: #9ca3af; margin-right: 4px;"></i>{{ hospital.location|truncatechars:30 }}</span>
+                </div>
+            </div>
+            <div class="hospital-actions">
+                <a href="{% url 'hospital_edit' hospital.hospital_id %}" class="action-btn edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+                <a href="{% url 'hospital_delete' hospital.hospital_id %}" class="action-btn delete">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <span style="font-family: monospace; font-size: 12px; color: var(--primary-color); font-weight: 600;">{{ hospital.hospital_id }}</span>
+            <span class="status-badge status-{{ hospital.status|lower }}" style="margin-left: 8px;">{{ hospital.status }}</span>
+        </div>
+        <div class="hospital-stats">
+            <div class="hospital-stat">
+                <span class="hospital-stat-label">Contact</span>
+                <span class="hospital-stat-value">{{ hospital.contact }}</span>
+            </div>
+            <div class="hospital-stat">
+                <span class="hospital-stat-label">Email</span>
+                <span class="hospital-stat-value" style="font-size: 11px;">{{ hospital.email }}</span>
+            </div>
+            <div class="hospital-stat">
+                <span class="hospital-stat-label">Total Beds</span>
+                <span class="hospital-stat-value">{{ hospital.total_beds }}</span>
+            </div>
+            <div class="hospital-stat">
+                <span class="hospital-stat-label">ICU Beds</span>
+                <span class="hospital-stat-value" style="color: #f59e0b;">{{ hospital.icu_beds }}</span>
+            </div>
+            <div class="hospital-stat">
+                <span class="hospital-stat-label">Doctors</span>
+                <span class="hospital-stat-value">{{ hospital.doctor_schedules.count }}</span>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <i class="fas fa-hospital text-muted mb-3" style="font-size: 48px;"></i>
+        <p class="text-muted">No hospitals found</p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function searchHospitals(query) {
+    if (event.key === 'Enter') {
+        window.location.href = `?search=${query}&status={{ status_filter }}`;
+    }
+}
+
+function filterByStatus(status) {
+    window.location.href = `?search={{ search }}&status=${status}`;
+}
+</script>
+{% endblock %}

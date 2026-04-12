@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoice {{ payment.invoice_id }} - DrSeva.com{% endblock %}
+{% block page_title %}Invoice Details{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header text-white py-4" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border-radius: 16px 16px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1"><i class="fas fa-file-invoice me-2"></i>INVOICE</h4>
+                        <p class="mb-0 opacity-75">{{ payment.invoice_id }}</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-white text-primary" style="font-size: 14px; padding: 8px 16px;">
+                            {{ payment.status }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-5">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Billed To:</h6>
+                        <h5>{{ payment.patient.name }}</h5>
+                        <p class="mb-1">{{ payment.patient.phone|default:"No phone" }}</p>
+                        <p class="mb-0">{{ payment.patient.email|default:"No email" }}</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <h6 class="text-muted mb-2">Doctor:</h6>
+                        <h5>Dr. {{ payment.doctor.name }}</h5>
+                        <p class="mb-1">{{ payment.doctor.specialty }}</p>
+                        <p class="mb-0">{{ payment.doctor.phone }}</p>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-1"><span class="text-muted">Invoice Date:</span> {{ payment.payment_date|date:"M d, Y" }}</p>
+                        <p class="mb-0"><span class="text-muted">Payment Method:</span> {{ payment.payment_method }}</p>
+                    </div>
+                </div>
+                
+                <table class="table">
+                    <thead style="background: #f9fafb;">
+                        <tr>
+                            <th>Description</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Consultation Fee</td>
+                            <td class="text-end">৳{{ payment.consultation_fee }}</td>
+                        </tr>
+                        <tr>
+                            <td>Service Charge</td>
+                            <td class="text-end">৳{{ payment.service_charge }}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot style="background: #f9fafb;">
+                        <tr>
+                            <th>Total Amount</th>
+                            <th class="text-end">৳{{ payment.total_amount }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="mt-5 text-center">
+                    <p class="text-muted mb-0">Thank you for choosing DrSeva Healthcare</p>
+                </div>
+            </div>
+            <div class="card-footer bg-white py-3" style="border-radius: 0 0 16px 16px;">
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print me-2"></i>Print Invoice
+                    </button>
+                    <a href="{% url 'payments_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Employees - DrSeva.com{% endblock %}
+{% block page_title %}Employee Management{% endblock %}
+
+{% block content %}
+<div class="table-card">
+    <div class="table-header">
+        <div class="table-actions">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search employees..." value="{{ search }}" onkeyup="searchEmployees(this.value)">
+            </div>
+            <select class="filter-dropdown" onchange="filterByRole(this.value)">
+                <option value="">All Roles</option>
+                <option value="Admin" {% if role_filter == 'Admin' %}selected{% endif %}>Admin</option>
+                <option value="Employee" {% if role_filter == 'Employee' %}selected{% endif %}>Employee</option>
+            </select>
+        </div>
+        <a href="{% url 'employee_add' %}" class="btn-add">
+            <i class="fas fa-plus"></i>
+            Add Employee
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Join Date</th>
+                    <th>Appointments Managed</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in employees %}
+                <tr>
+                    <td><span style="font-family: monospace; font-weight: 600; color: var(--primary-color);">{{ employee.employee_id }}</span></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            {% if employee.profile_photo %}
+                            <img src="{{ employee.profile_photo.url }}" alt="{{ employee.name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                            <div style="width: 40px; height: 40px; background: #eff6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-weight: 600;">
+                                {{ employee.name|first|upper }}
+                            </div>
+                            {% endif %}
+                            <span style="font-weight: 500;">{{ employee.name }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {% if employee.role == 'Admin' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            {{ employee.role }}
+                        </span>
+                    </td>
+                    <td>{{ employee.phone }}</td>
+                    <td>{{ employee.email }}</td>
+                    <td>{{ employee.hire_date|date:"Y-m-d" }}</td>
+                    <td>{{ employee.get_assigned_appointments_count }}</td>
+                    <td>
+                        <span class="status-badge status-{{ employee.status|lower }}">
+                            {{ employee.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{% url 'employee_detail' employee.employee_id %}" class="action-btn view">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'employee_edit' employee.employee_id %}" class="action-btn edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'employee_delete' employee.employee_id %}" class="action-btn delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-4">No employees found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function searchEmployees(query) {
+    if (event.key === 'Enter') {
+        window.location.href = `?search=${query}&role={{ role_filter }}`;
+    }
+}
+
+function filterByRole(role) {
+    window.location.href = `?search={{ search }}&role=${role}`;
+}
+</script>
+{% endblock %}

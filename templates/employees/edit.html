@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Employee - DrSeva.com{% endblock %}
+{% block page_title %}Edit Employee{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Employee ID</label>
+                <input type="text" class="form-control" value="{{ employee.employee_id }}" disabled>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Profile Photo</label>
+                <input type="file" name="profile_photo" class="form-control" accept="image/*">
+                {% if employee.profile_photo %}
+                <small class="text-muted">Current: {{ employee.profile_photo.name }}</small>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" value="{{ employee.name }}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Age <span class="text-danger">*</span></label>
+                <input type="number" name="age" class="form-control" value="{{ employee.age }}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Gender <span class="text-danger">*</span></label>
+                <select name="gender" class="form-control" required>
+                    <option value="Male" {% if employee.gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if employee.gender == 'Female' %}selected{% endif %}>Female</option>
+                    <option value="Other" {% if employee.gender == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Phone <span class="text-danger">*</span></label>
+                <input type="text" name="phone" class="form-control" value="{{ employee.phone }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Email <span class="text-danger">*</span></label>
+                <input type="email" name="email" class="form-control" value="{{ employee.email }}" required>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Password (leave blank to keep unchanged)</label>
+                <input type="password" name="password" class="form-control" placeholder="New Password">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Role <span class="text-danger">*</span></label>
+                <select name="role" class="form-control" required>
+                    <option value="Employee" {% if employee.role == 'Employee' %}selected{% endif %}>Employee</option>
+                    <option value="Admin" {% if employee.role == 'Admin' %}selected{% endif %}>Admin</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="Active" {% if employee.status == 'Active' %}selected{% endif %}>Active</option>
+                    <option value="Inactive" {% if employee.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Hire Date</label>
+                <input type="date" name="hire_date" class="form-control" value="{{ employee.hire_date|date:'Y-m-d' }}">
+            </div>
+        </div>
+        
+        <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Update Employee
+            </button>
+            <a href="{% url 'employees_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointments - DrSeva.com{% endblock %}
+{% block page_title %}Appointment Management{% endblock %}
+
+{% block content %}
+<div class="custom-tabs">
+    <a href="?tab=distributed" class="tab-btn {% if tab == 'distributed' %}active{% endif %}">Distributed Appointments</a>
+    <a href="?tab=non-distributed" class="tab-btn {% if tab == 'non-distributed' %}active{% endif %}">Non-Distributed Appointments</a>
+</div>
+
+<div class="table-card">
+    <div class="table-header">
+        <div class="table-actions" style="flex: 1;">
+            <div class="search-box" style="flex: 1; max-width: 400px;">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search patient or doctor..." value="{{ search }}" onkeyup="searchAppointments(this.value)">
+            </div>
+            {% if tab == 'distributed' %}
+            <select class="filter-dropdown" onchange="filterByStatus(this.value)">
+                <option value="">All Status</option>
+                <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+            {% endif %}
+        </div>
+        <a href="{% url 'appointment_add' %}" class="btn-add">
+            <i class="fas fa-plus"></i>
+            Add Appointment
+        </a>
+    </div>
+    <div class="table-responsive" style="overflow-x: auto;">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Appointment ID</th>
+                    <th>Patient Name</th>
+                    <th>Doctor Name</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Service Charge</th>
+                    {% if tab == 'distributed' %}
+                    <th>Manager Status</th>
+                    <th>Doctor Status</th>
+                    <th>Final Status</th>
+                    {% else %}
+                    <th>Select Employee</th>
+                    {% endif %}
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                <tr>
+                    <td><span style="font-family: monospace; font-weight: 600; color: var(--primary-color);">{{ appointment.appointment_id }}</span></td>
+                    <td>
+                        <a href="{% url 'patient_detail' appointment.patient.id %}" style="color: var(--primary-color); font-weight: 500; text-decoration: none;">
+                            {{ appointment.patient.name }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'doctor_detail' appointment.doctor.doctor_id %}" style="color: var(--primary-color); font-weight: 500; text-decoration: none;">
+                            Dr. {{ appointment.doctor.name }}
+                        </a>
+                    </td>
+                    <td>{{ appointment.date|date:"Y-m-d" }}</td>
+                    <td>{{ appointment.time|time:"h:i A" }}</td>
+                    <td>{{ appointment.appointment_type }}</td>
+                    <td>৳{{ appointment.service_charge }}</td>
+                    {% if tab == 'distributed' %}
+                    <td><span class="status-badge status-{{ appointment.manager_status|lower }}">{{ appointment.manager_status }}</span></td>
+                    <td><span class="status-badge status-{{ appointment.doctor_status|lower }}">{{ appointment.doctor_status }}</span></td>
+                    <td><span class="status-badge status-{{ appointment.final_status|lower }}">{{ appointment.final_status }}</span></td>
+                    {% else %}
+                    <td>
+                        <form method="post" action="{% url 'appointment_assign' appointment.appointment_id %}" class="d-flex gap-2">
+                            {% csrf_token %}
+                            <select name="employee_id" class="employee-select" required>
+                                <option value="">Select Employee</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}">{{ employee.name }}</option>
+                                {% endfor %}
+                            </select>
+                    </td>
+                    {% endif %}
+                    <td>
+                        <div class="action-btns">
+                            {% if tab == 'non-distributed' %}
+                            <button type="submit" class="btn-assign">
+                                <i class="fas fa-user-plus"></i>
+                                Assign
+                            </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'appointment_edit' appointment.appointment_id %}" class="action-btn edit">
+                                <i class="fas fa-pen"></i>
+                            </a>
+                            <a href="{% url 'appointment_delete' appointment.appointment_id %}" class="action-btn delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if tab == 'distributed' %}11{% else %}10{% endif %}" class="text-center py-4">No appointments found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function searchAppointments(query) {
+    if (event.key === 'Enter') {
+        window.location.href = `?tab={{ tab }}&search=${query}&status={{ status_filter }}`;
+    }
+}
+
+function filterByStatus(status) {
+    window.location.href = `?tab={{ tab }}&search={{ search }}&status=${status}`;
+}
+</script>
+{% endblock %}

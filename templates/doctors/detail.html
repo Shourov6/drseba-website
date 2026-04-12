@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Details - DrSeva.com{% endblock %}
+{% block page_title %}Doctor Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border-radius: 16px 16px 0 0;">
+                {% if doctor.profile_photo %}
+                <img src="{{ doctor.profile_photo.url }}" alt="{{ doctor.name }}" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover; border: 4px solid white;">
+                {% else %}
+                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background: white; color: var(--primary-color); font-size: 48px; font-weight: 700;">
+                    {{ doctor.name|first|upper }}
+                </div>
+                {% endif %}
+                <h4 class="mb-1">Dr. {{ doctor.name }}</h4>
+                <p class="mb-0 opacity-75">{{ doctor.specialty }}</p>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <span class="text-muted">Doctor ID:</span>
+                    <span class="float-end fw-bold">{{ doctor.doctor_id }}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Status:</span>
+                    <span class="float-end">
+                        <span class="status-badge status-{{ doctor.status|lower }}">{{ doctor.status }}</span>
+                    </span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Registration Date:</span>
+                    <span class="float-end">{{ doctor.registration_date|date:"M d, Y" }}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Experience:</span>
+                    <span class="float-end">{{ doctor.experience }} Years</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Commission:</span>
+                    <span class="float-end">{{ doctor.commission_percentage }}%</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Language:</span>
+                    <span class="float-end">{{ doctor.consultation_language }}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Online Appointment:</span>
+                    <span class="float-end">{% if doctor.online_appointment %}Yes{% else %}No{% endif %}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted">Emergency Available:</span>
+                    <span class="float-end">{% if doctor.emergency_available %}Yes{% else %}No{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card mb-4" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header bg-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-user me-2 text-primary"></i>Personal Information</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">Age</span>
+                        <span class="fw-bold">{{ doctor.age }} years</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">Gender</span>
+                        <span class="fw-bold">{{ doctor.gender }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">Phone</span>
+                        <span class="fw-bold">{{ doctor.phone }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">Email</span>
+                        <span class="fw-bold">{{ doctor.email }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header bg-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-graduation-cap me-2 text-primary"></i>Professional Details</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">Qualification</span>
+                        <span class="fw-bold">{{ doctor.qualification }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="text-muted d-block">License Number</span>
+                        <span class="fw-bold">{{ doctor.medical_license_number }}</span>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <span class="text-muted d-block">About</span>
+                        <p class="mb-0">{{ doctor.about|default:"No information available" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+            <div class="card-header bg-white py-3" style="border-radius: 16px 16px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-hospital me-2 text-primary"></i>Hospital Schedules</h5>
+            </div>
+            <div class="card-body p-4">
+                {% for schedule in schedules %}
+                <div class="card mb-3" style="background: #f9fafb; border: none;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0 fw-bold">{{ schedule.hospital.name }}</h6>
+                            <span class="badge bg-primary">{{ schedule.hospital.hospital_id }}</span>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-2">
+                                <span class="text-muted d-block" style="font-size: 12px;">Days</span>
+                                <span class="fw-bold" style="font-size: 14px;">{{ schedule.days }}</span>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <span class="text-muted d-block" style="font-size: 12px;">Time</span>
+                                <span class="fw-bold" style="font-size: 14px;">{{ schedule.time }}</span>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <span class="text-muted d-block" style="font-size: 12px;">Consultation Fee</span>
+                                <span class="fw-bold" style="font-size: 14px;">৳{{ schedule.consultation_fee }}</span>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <span class="text-muted d-block" style="font-size: 12px;">Service Charge</span>
+                                <span class="fw-bold" style="font-size: 14px;">৳{{ schedule.service_charge }}</span>
+                            </div>
+                        </div>
+                        {% if schedule.chamber_address %}
+                        <div class="mt-2">
+                            <span class="text-muted" style="font-size: 12px;"><i class="fas fa-map-marker-alt me-1"></i>{{ schedule.chamber_address }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-3">No hospital schedules found</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{% url 'doctor_edit' doctor.doctor_id %}" class="btn btn-primary me-2">
+                <i class="fas fa-edit me-2"></i>Edit Doctor
+            </a>
+            <a href="{% url 'doctors_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

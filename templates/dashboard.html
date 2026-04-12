@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DrSeva.com{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon blue">
+                <i class="fas fa-user-md"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +12.5%
+            </span>
+        </div>
+        <div class="stat-label">Active Doctors</div>
+        <div class="stat-value">{{ total_doctors }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon green">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +8.2%
+            </span>
+        </div>
+        <div class="stat-label">Total Appointments</div>
+        <div class="stat-value">{{ total_appointments }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon purple">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +23.1%
+            </span>
+        </div>
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value">৳{{ total_revenue|floatformat:0 }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon orange">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+            <span class="stat-trend trend-down">
+                <i class="fas fa-arrow-down"></i> -2.4%
+            </span>
+        </div>
+        <div class="stat-label">Total Patients</div>
+        <div class="stat-value">{{ total_patients }}</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="table-card">
+            <div class="table-header">
+                <h4 class="chart-title">Recent Appointments</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Patient Name</th>
+                            <th>Doctor</th>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in recent_appointments %}
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #eff6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-weight: 600;">
+                                        {{ appointment.patient.name|first|upper }}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: #111827;">{{ appointment.patient.name }}</div>
+                                        <div style="font-size: 12px; color: #6b7280;">{{ appointment.appointment_type }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>Dr. {{ appointment.doctor.name }}</td>
+                            <td>{{ appointment.date|date:"M d, Y" }} at {{ appointment.time|time:"h:i A" }}</td>
+                            <td>
+                                <span class="status-badge status-{{ appointment.final_status|lower }}">
+                                    {{ appointment.final_status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">No recent appointments</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h4 class="chart-title">Appointments by Specialty</h4>
+            </div>
+            <div style="padding: 20px;">
+                {% for specialty in appointments_by_specialty %}
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 14px; color: #374151;">{{ specialty.doctor__specialty }}</span>
+                        <span style="font-size: 14px; font-weight: 600; color: #111827;">{{ specialty.count }}</span>
+                    </div>
+                    <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; background: var(--primary-color); border-radius: 4px; width: {% widthratio specialty.count total_appointments 100 %}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-center text-muted">No data available</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="chart-card mt-4">
+            <div class="chart-header">
+                <h4 class="chart-title">Quick Stats</h4>
+            </div>
+            <div style="padding: 20px;">
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                    <span style="font-size: 14px; color: #6b7280;">Active Hospitals</span>
+                    <span style="font-size: 14px; font-weight: 600; color: #111827;">{{ total_hospitals }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                    <span style="font-size: 14px; color: #6b7280;">Active Employees</span>
+                    <span style="font-size: 14px; font-weight: 600; color: #111827;">{{ active_employees }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px 0;">
+                    <span style="font-size: 14px; color: #6b7280;">Pending Appointments</span>
+                    <span style="font-size: 14px; font-weight: 600; color: #f59e0b;">
+                        {% with pending_count=recent_appointments|length %}
+                            {{ pending_count }}
+                        {% endwith %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

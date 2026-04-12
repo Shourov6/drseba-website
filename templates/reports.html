@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics & Reports - DrSeva.com{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h3 class="section-title">Analytics Overview</h3>
+    <button class="btn-export" onclick="exportReport()">
+        <i class="fas fa-download"></i>
+        Export Full Report
+    </button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon blue">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +23%
+            </span>
+        </div>
+        <div class="stat-label">Growth Rate</div>
+        <div class="stat-value">23.5%</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon green">
+                <i class="fas fa-users"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +12%
+            </span>
+        </div>
+        <div class="stat-label">Active Patients</div>
+        <div class="stat-value">{{ doctor_performance|length }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon purple">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +8%
+            </span>
+        </div>
+        <div class="stat-label">Total Appointments</div>
+        <div class="stat-value">{{ monthly_appointments|length }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon orange">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <span class="stat-trend trend-up">
+                <i class="fas fa-arrow-up"></i> +18%
+            </span>
+        </div>
+        <div class="stat-label">Average Revenue</div>
+        <div class="stat-value">৳58.5k</div>
+    </div>
+</div>
+
+<div class="charts-grid">
+    <!-- Revenue Trend Chart -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h4 class="chart-title">Monthly Revenue Trend</h4>
+            <button class="chart-download" onclick="downloadChart('revenue')">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+        <div style="height: 250px; position: relative;">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Payment Method Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h4 class="chart-title">Payment Method Distribution</h4>
+        </div>
+        <div style="text-align: center; padding: 20px;">
+            <div style="display: inline-block; position: relative;">
+                <div style="width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(#2563eb 0deg 162deg, #f59e0b 162deg 216deg, #ef4444 216deg 252deg, #10b981 252deg 360deg);"></div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                    <span style="font-size: 12px; color: #6b7280;">Credit Card</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #111827;">45%</span>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <div style="width: 12px; height: 12px; background: #2563eb; border-radius: 50%;"></div>
+                    <span>Credit Card 45%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%;"></div>
+                    <span>Insurance 30%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <div style="width: 12px; height: 12px; background: #f59e0b; border-radius: 50%;"></div>
+                    <span>Cash 15%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%;"></div>
+                    <span>Debit Card 10%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor Performance -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h4 class="chart-title">Top Doctor Performance</h4>
+            <button class="chart-download" onclick="downloadChart('doctors')">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+        <div style="padding: 10px;">
+            {% for doctor in doctor_performance %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 32px; height: 32px; background: #eff6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-size: 12px; font-weight: 600;">
+                        {{ forloop.counter }}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: #111827; font-size: 14px;">Dr. {{ doctor.name }}</div>
+                        <div style="font-size: 12px; color: #6b7280;">{{ doctor.patient_count }} patients</div>
+                    </div>
+                </div>
+                <div style="color: #f59e0b; font-size: 14px;">
+                    <i class="fas fa-star"></i>
+                    <span style="font-weight: 600;">4.{{ forloop.counter|add:3 }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center text-muted py-3">No data available</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Hospital Performance -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h4 class="chart-title">Hospital Performance</h4>
+            <button class="chart-download" onclick="downloadChart('hospitals')">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+        <div style="height: 250px; position: relative; padding: 20px;">
+            <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 200px;">
+                {% for hospital in hospital_performance %}
+                <div style="text-align: center;">
+                    <div style="width: 40px; background: var(--primary-color); border-radius: 4px 4px 0 0; margin: 0 auto; height: {{ hospital.appointment_count|default:10 }}px; min-height: 20px;"></div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 8px; max-width: 80px; overflow: hidden; text-overflow: ellipsis;">{{ hospital.name|truncatechars:10 }}</div>
+                </div>
+                {% empty %}
+                <p class="text-center text-muted">No data available</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Revenue Chart
+const ctx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        datasets: [{
+            label: 'Revenue (৳)',
+            data: {{ monthly_revenue|safe }},
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: '#f3f4f6'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+function exportReport() {
+    alert('Export functionality will be implemented here');
+}
+
+function downloadChart(type) {
+    alert('Download ' + type + ' chart');
+}
+</script>
+{% endblock %}
