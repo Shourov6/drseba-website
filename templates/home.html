@@ -140,106 +140,49 @@
             <p class="text-muted">{{ translations.find_by_specialty }}</p>
         </div>
         
+        {% if featured_specialties %}
         <div class="row g-4">
-            <!-- Ayurvedic & Unani Medicine -->
+            {% for specialty in featured_specialties %}
+            <!-- Dynamic Specialty Card -->
             <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/ayurvedic-unani-medicine/" class="text-decoration-none">
+                <a href="/doctors/specialty/{{ specialty.name|lower|cut:' '|cut:'&'|cut:'/' }}/" class="text-decoration-none">
                     <div class="specialty-card">
-                        <div class="fs-1 mb-2">🌿</div>
-                        <h6 class="fw-bold text-dark">Ayurvedic & Unani Medicine</h6>
-                        <small class="text-muted">Traditional herbal medicine specialists</small>
+                        <div class="fs-1 mb-2">{{ specialty.emoji|default:"⚕️" }}</div>
+                        <h6 class="fw-bold text-dark">{{ specialty.name }}</h6>
+                        <small class="text-muted">{{ specialty.description|default:"Medical specialists" }}</small>
                     </div>
                 </a>
             </div>
-
-            <!-- Ultrasonography -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/ultrasonography/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">📊</div>
-                        <h6 class="fw-bold text-dark">Ultrasonography</h6>
-                        <small class="text-muted">Ultrasound imaging specialists</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Cancer Medicine & Tumor -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/cancer-medicine-tumor/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">🎗️</div>
-                        <h6 class="fw-bold text-dark">Cancer Medicine & Tumor</h6>
-                        <small class="text-muted">Oncology and tumor treatment</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Gynecology & Obstetrics -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/gynecology-obstetrics/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">🤰</div>
-                        <h6 class="fw-bold text-dark">Gynecology, Obstetrics, Infertility & Surgery</h6>
-                        <small class="text-muted">Women's health and reproductive care</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Gastroenterology & Liver -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/gastroenterology-liver/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">🫀</div>
-                        <h6 class="fw-bold text-dark">Gastroenterology & Liver</h6>
-                        <small class="text-muted">Digestive system and liver specialists</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Ophthalmologist -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/ophthalmologist/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">👁️</div>
-                        <h6 class="fw-bold text-dark">Ophthalmologist</h6>
-                        <small class="text-muted">Eye care specialists</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Dermatology & Allergy -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/dermatology-allergy/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">🩹</div>
-                        <h6 class="fw-bold text-dark">Dermatology, Allergy & Sexual Health</h6>
-                        <small class="text-muted">Skin, allergy and sexual health</small>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Thyroid, Hormone & Diabetes -->
-            <div class="col-lg-3 col-md-4 col-6">
-                <a href="/doctors/specialty/thyroid-hormone-diabetes/" class="text-decoration-none">
-                    <div class="specialty-card">
-                        <div class="fs-1 mb-2">🦋</div>
-                        <h6 class="fw-bold text-dark">Thyroid, Hormone & Diabetes</h6>
-                        <small class="text-muted">Endocrinology specialists</small>
-                    </div>
-                </a>
-            </div>
+            {% endfor %}
         </div>
 
-        <!-- View All Specialties Button -->
+        <!-- View All Specialties Button (Only show if more than 8) -->
         <div class="text-center mt-5">
+            {% if show_see_all %}
+            <a href="/doctors/specialties/" class="btn btn-primary btn-lg">
+                See All {{ total_specialties_with_doctors }} Specialties <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            {% else %}
             <a href="/doctors/specialties/" class="btn btn-primary btn-lg">
                 {{ translations.view_all_specialties }} <i class="bi bi-arrow-right ms-1"></i>
             </a>
+            {% endif %}
         </div>
+        {% else %}
+        <!-- No specialties with doctors yet -->
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No specialties available yet.</strong><br>
+            <small>Admin needs to add doctors with specialties to display them here.</small>
+        </div>
+        <div class="text-center mt-3">
+            <a href="/doctors/" class="btn btn-primary">Browse All Doctors</a>
+        </div>
+        {% endif %}
     </div>
 </section>
 
-<!-- Featured Doctors -->
+<!-- Featured Doctors Section -->
 <section class="py-5">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-5">
@@ -252,30 +195,44 @@
             </a>
         </div>
         
+        {% if featured_doctors %}
         <div class="row g-4">
-            <!-- Doctor 1 -->
+            {% for doctor in featured_doctors %}
+            <!-- Dynamic Doctor Card -->
             <div class="col-lg-4 col-md-6">
                 <div class="doctor-card p-4">
                     <div class="d-flex align-items-start mb-3">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" class="doctor-img me-3" alt="Dr. Mohammad Rahman">
-                        <div>
-                            <h6 class="fw-bold mb-1">Dr. Mohammad Rahman</h6>
-                            <small class="text-muted">{{ translations.cardiologist }}</small>
-                            <div class="mt-1">
-                                <small class="text-muted">15 {{ translations.years_exp }}</small>
-                            </div>
+                        {% if doctor.profile_image %}
+                            <img src="{{ doctor.profile_image.url }}" class="doctor-img me-3" alt="Dr. {{ doctor.first_name }} {{ doctor.last_name }}">
+                        {% else %}
+                            <img src="https://via.placeholder.com/60?text={{ doctor.first_name|first }}" class="doctor-img me-3" alt="Dr. {{ doctor.first_name }} {{ doctor.last_name }}">
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold mb-1">Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h6>
+                            {% if doctor.specialties.all %}
+                                <small class="text-muted">{{ doctor.specialties.all|first }}</small>
+                            {% else %}
+                                <small class="text-muted">Medical Professional</small>
+                            {% endif %}
+                            {% if doctor.experience_years %}
+                                <div class="mt-1">
+                                    <small class="text-muted">{{ doctor.experience_years }} {{ translations.years_exp }}</small>
+                                </div>
+                            {% endif %}
                         </div>
-                        <i class="bi bi-check-circle-fill verified-badge ms-auto"></i>
+                        {% if doctor.is_verified %}
+                            <i class="bi bi-check-circle-fill verified-badge ms-auto"></i>
+                        {% endif %}
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="rating">
                             <i class="bi bi-star-fill"></i>
-                            <span class="text-dark ms-1">4.8</span>
-                            <small class="text-muted">(256)</small>
+                            <span class="text-dark ms-1">{{ doctor.average_rating|default:"4.5" }}</span>
+                            <small class="text-muted">({{ doctor.review_count|default:"0" }})</small>
                         </div>
                         <div class="text-end">
                             <small class="text-muted">{{ translations.consultation }}</small>
-                            <p class="fw-bold text-primary mb-0">৳ 500</p>
+                            <p class="fw-bold text-primary mb-0">৳ {{ doctor.consultation_fee|default:"500" }}</p>
                         </div>
                     </div>
                     <div class="d-grid gap-2 d-md-flex">
@@ -284,71 +241,19 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Doctor 2 -->
-            <div class="col-lg-4 col-md-6">
-                <div class="doctor-card p-4">
-                    <div class="d-flex align-items-start mb-3">
-                        <img src="https://randomuser.me/api/portraits/women/44.jpg" class="doctor-img me-3" alt="Dr. Fatima Sultana">
-                        <div>
-                            <h6 class="fw-bold mb-1">Dr. Fatima Sultana</h6>
-                            <small class="text-muted">{{ translations.gynecologist }}</small>
-                            <div class="mt-1">
-                                <small class="text-muted">12 {{ translations.years_exp }}</small>
-                            </div>
-                        </div>
-                        <i class="bi bi-check-circle-fill verified-badge ms-auto"></i>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="rating">
-                            <i class="bi bi-star-fill"></i>
-                            <span class="text-dark ms-1">4.9</span>
-                            <small class="text-muted">(342)</small>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted">{{ translations.consultation }}</small>
-                            <p class="fw-bold text-primary mb-0">৳ 600</p>
-                        </div>
-                    </div>
-                    <div class="d-grid gap-2 d-md-flex">
-                        <a href="/doctors/" class="btn btn-outline-primary flex-fill">{{ translations.view_profile }}</a>
-                        <a href="/doctors/" class="btn btn-primary flex-fill">{{ translations.book_now }}</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Doctor 3 -->
-            <div class="col-lg-4 col-md-6">
-                <div class="doctor-card p-4">
-                    <div class="d-flex align-items-start mb-3">
-                        <img src="https://randomuser.me/api/portraits/men/67.jpg" class="doctor-img me-3" alt="Dr. Shahidul Islam">
-                        <div>
-                            <h6 class="fw-bold mb-1">Dr. Shahidul Islam</h6>
-                            <small class="text-muted">{{ translations.medicine_specialist }}</small>
-                            <div class="mt-1">
-                                <small class="text-muted">20 {{ translations.years_exp }}</small>
-                            </div>
-                        </div>
-                        <i class="bi bi-check-circle-fill verified-badge ms-auto"></i>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="rating">
-                            <i class="bi bi-star-fill"></i>
-                            <span class="text-dark ms-1">4.7</span>
-                            <small class="text-muted">(189)</small>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted">{{ translations.consultation }}</small>
-                            <p class="fw-bold text-primary mb-0">৳ 400</p>
-                        </div>
-                    </div>
-                    <div class="d-grid gap-2 d-md-flex">
-                        <a href="/doctors/" class="btn btn-outline-primary flex-fill">{{ translations.view_profile }}</a>
-                        <a href="/doctors/" class="btn btn-primary flex-fill">{{ translations.book_now }}</a>
-                    </div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <!-- No doctors available -->
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No doctors available yet.</strong><br>
+            <small>Admin needs to add doctors to display them here.</small>
+        </div>
+        <div class="text-center mt-3">
+            <a href="/doctors/" class="btn btn-primary">Browse All Doctors</a>
+        </div>
+        {% endif %}
     </div>
 </section>
 
@@ -391,65 +296,45 @@
             <h2 class="fw-bold">{{ translations.what_patients_say }}</h2>
         </div>
         
+        {% if featured_reviews %}
         <div class="row g-4">
+            {% for review in featured_reviews %}
+            <!-- Dynamic Testimonial Card -->
             <div class="col-md-4">
                 <div class="testimonial-card">
                     <div class="rating mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= review.rating %}
+                                <i class="bi bi-star-fill"></i>
+                            {% else %}
+                                <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    <p class="text-muted">"Excellent service! Found a great cardiologist within minutes."</p>
+                    <p class="text-muted">"{{ review.comment }}"</p>
                     <div class="d-flex align-items-center mt-3">
-                        <img src="https://randomuser.me/api/portraits/men/22.jpg" class="rounded-circle me-3" width="40" height="40" alt="Patient">
+                        {% if review.patient.profile_image %}
+                            <img src="{{ review.patient.profile_image.url }}" class="rounded-circle me-3" width="40" height="40" alt="Patient">
+                        {% else %}
+                            <img src="https://via.placeholder.com/40?text={{ review.patient.first_name|first }}" class="rounded-circle me-3" width="40" height="40" alt="Patient">
+                        {% endif %}
                         <div>
-                            <h6 class="mb-0 fw-bold">Rahim Ahmed</h6>
+                            <h6 class="mb-0 fw-bold">{{ review.patient.first_name }} {{ review.patient.last_name }}</h6>
                             <small class="text-muted">Patient</small>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="testimonial-card">
-                    <div class="rating mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="text-muted">"Very professional doctors and easy appointment booking system."</p>
-                    <div class="d-flex align-items-center mt-3">
-                        <img src="https://randomuser.me/api/portraits/women/25.jpg" class="rounded-circle me-3" width="40" height="40" alt="Patient">
-                        <div>
-                            <h6 class="mb-0 fw-bold">Nasrin Akhtar</h6>
-                            <small class="text-muted">Patient</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="testimonial-card">
-                    <div class="rating mb-3">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="text-muted">"Best platform for finding verified doctors. Highly recommended!"</p>
-                    <div class="d-flex align-items-center mt-3">
-                        <img src="https://randomuser.me/api/portraits/men/45.jpg" class="rounded-circle me-3" width="40" height="40" alt="Patient">
-                        <div>
-                            <h6 class="mb-0 fw-bold">Karim Hassan</h6>
-                            <small class="text-muted">Patient</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <!-- No reviews yet -->
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No reviews available yet.</strong><br>
+            <small>Patient reviews will appear here after they complete appointments and leave feedback.</small>
+        </div>
+        {% endif %}
     </div>
 </section>
 
