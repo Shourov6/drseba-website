@@ -860,4 +860,126 @@
         </div>
     </div>
 </div>
+
+<!-- Emergency Services Section -->
+<section id="emergency-services" class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="fw-bold mb-3">🚨 Emergency Services</h2>
+                <p class="text-muted lead">Need immediate medical assistance? Our emergency hotlines are available 24/7</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 text-center p-4">
+                    <i class="bi bi-telephone-fill text-danger fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Ambulance Service</h5>
+                    <p class="text-muted mb-3">Emergency ambulance pickup</p>
+                    <a href="tel:999" class="btn btn-danger btn-sm">Call Now</a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 text-center p-4">
+                    <i class="bi bi-exclamation-circle-fill text-warning fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Emergency Hotline</h5>
+                    <p class="text-muted mb-3">General emergency assistance</p>
+                    <a href="tel:01700123456" class="btn btn-warning btn-sm">Call Now</a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 text-center p-4">
+                    <i class="bi bi-hospital text-info fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Hospital Locator</h5>
+                    <p class="text-muted mb-3">Find nearest hospital</p>
+                    <a href="{% url 'doctors:list' %}" class="btn btn-info btn-sm">Find Now</a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 text-center p-4">
+                    <i class="bi bi-chat-dots-fill text-primary fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Chat Support</h5>
+                    <p class="text-muted mb-3">Speak with our team</p>
+                    <a href="mailto:emergency@drseba.com" class="btn btn-primary btn-sm">Contact</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section id="about-section" class="py-5">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-6">
+                <h2 class="fw-bold mb-4">About DrSeba.com</h2>
+                <p class="text-muted mb-3">
+                    DrSeba.com is Bangladesh's leading online healthcare platform dedicated to connecting patients with trusted medical professionals. 
+                    Our mission is to make quality healthcare accessible to everyone.
+                </p>
+                <p class="text-muted mb-3">
+                    With a network of verified doctors, specialists, and healthcare providers across the country, we ensure you get the best care when you need it.
+                </p>
+                <div class="row g-3 mt-4">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h5 class="text-primary fw-bold">1000+</h5>
+                            <p class="text-muted small">Verified Doctors</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h5 class="text-primary fw-bold">50,000+</h5>
+                            <p class="text-muted small">Happy Patients</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h5 class="text-primary fw-bold">64</h5>
+                            <p class="text-muted small">Districts Covered</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h5 class="text-primary fw-bold">24/7</h5>
+                            <p class="text-muted small">Available Service</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg p-5 bg-primary bg-opacity-10">
+                    <h4 class="fw-bold mb-4">Why Choose DrSeba?</h4>
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>Verified Professionals</strong> - All doctors are verified and licensed
+                        </li>
+                        <li class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>Easy Booking</strong> - Simple appointment scheduling system
+                        </li>
+                        <li class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>Secure Payments</strong> - Safe and encrypted transactions
+                        </li>
+                        <li class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>Multilingual Support</strong> - Available in Bengali and English
+                        </li>
+                        <li class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>24/7 Availability</strong> - Book appointments anytime, anywhere
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <strong>Quality Assurance</strong> - Patient reviews and ratings system
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 {% endblock %}
