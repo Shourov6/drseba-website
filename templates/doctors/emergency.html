@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Emergency Services - DrSeba.com{% endblock %}
+
+{% block content %}
+<!-- Emergency Hero -->
+<section class="py-5 bg-danger text-white">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h1 class="fw-bold mb-3"><i class="bi bi-truck-medical me-3"></i>Emergency Services</h1>
+                <p class="lead mb-4">24/7 Emergency Support for Critical Medical Needs</p>
+                <a href="tel:999" class="btn btn-light btn-lg">
+                    <i class="bi bi-telephone-fill me-2"></i>Call Emergency: 999
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Emergency Numbers -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Emergency Contact Numbers</h2>
+            <p class="text-muted">Save these numbers for quick access during emergencies</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="emergency-card bg-white rounded-4 p-4 shadow-sm text-center h-100 border-top border-danger border-4">
+                    <div class="emergency-icon mb-3">
+                        <i class="bi bi-telephone-fill fs-1 text-danger"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">National Emergency</h5>
+                    <a href="tel:999" class="btn btn-danger btn-lg w-100">
+                        <i class="bi bi-telephone-fill me-2"></i>999
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="emergency-card bg-white rounded-4 p-4 shadow-sm text-center h-100 border-top border-primary border-4">
+                    <div class="emergency-icon mb-3">
+                        <i class="bi bi-hospital fs-1 text-primary"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Ambulance Service</h5>
+                    <a href="tel:199" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-telephone-fill me-2"></i>199
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="emergency-card bg-white rounded-4 p-4 shadow-sm text-center h-100 border-top border-success border-4">
+                    <div class="emergency-icon mb-3">
+                        <i class="bi bi-fire fs-1 text-success"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Fire Service</h5>
+                    <a href="tel:199" class="btn btn-success btn-lg w-100">
+                        <i class="bi bi-telephone-fill me-2"></i>199
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Ambulance Services -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Ambulance Services</h2>
+            <p class="text-muted">Quick access to ambulance services in major cities</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="service-card bg-white rounded-4 p-4 shadow-sm">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Dhaka</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="tel:+8801711000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1711-000000
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="tel:+8801722000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1722-000000
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tel:+8801733000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1733-000000
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="service-card bg-white rounded-4 p-4 shadow-sm">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Chittagong</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="tel:+8801811000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1811-000000
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="tel:+8801822000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1822-000000
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tel:+8801833000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1833-000000
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="service-card bg-white rounded-4 p-4 shadow-sm">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Sylhet</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="tel:+8801911000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1911-000000
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="tel:+8801922000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1922-000000
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tel:+8801933000000" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone me-2 text-primary"></i>+880 1933-000000
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- First Aid Tips -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">First Aid Tips</h2>
+            <p class="text-muted">Basic first aid knowledge for common emergencies</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="tip-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="tip-icon mb-3">
+                        <i class="bi bi-heart-pulse fs-1 text-danger"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Heart Attack</h6>
+                    <ul class="text-muted small mb-0 ps-3">
+                        <li>Call emergency immediately</li>
+                        <li>Keep person calm</li>
+                        <li>Loosen tight clothing</li>
+                        <li>Give aspirin if available</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="tip-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="tip-icon mb-3">
+                        <i class="bi bi-droplet fs-1 text-danger"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Severe Bleeding</h6>
+                    <ul class="text-muted small mb-0 ps-3">
+                        <li>Apply direct pressure</li>
+                        <li>Elevate the wound</li>
+                        <li>Use clean cloth</li>
+                        <li>Don't remove embedded objects</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="tip-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="tip-icon mb-3">
+                        <i class="bi bi-thermometer-high fs-1 text-warning"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Burns</h6>
+                    <ul class="text-muted small mb-0 ps-3">
+                        <li>Cool with running water</li>
+                        <li>Don't apply ice</li>
+                        <li>Cover with clean cloth</li>
+                        <li>Seek medical help</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="tip-card bg-white rounded-4 p-4 shadow-sm h-100">
+                    <div class="tip-icon mb-3">
+                        <i class="bi bi-wind fs-1 text-info"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Choking</h6>
+                    <ul class="text-muted small mb-0 ps-3">
+                        <li>Encourage coughing</li>
+                        <li>Perform back blows</li>
+                        <li>Use Heimlich maneuver</li>
+                        <li>Call emergency if needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Important Notice -->
+<section class="py-5 bg-warning bg-opacity-10">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="alert alert-warning d-flex align-items-start mb-0">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                    <div>
+                        <h5 class="alert-heading fw-bold">Important Notice</h5>
+                        <p class="mb-0">In case of life-threatening emergencies, please call 999 immediately. This page provides information only and should not replace professional medical advice. Always consult with healthcare professionals for medical emergencies.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

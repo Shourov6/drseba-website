@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DrSeba.com - Find Your Trusted Doctor{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'doctors:home' %}">
+                <div class="logo-icon me-2">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+                <span class="logo-text">DrSeba<span class="text-primary">.com</span></span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'doctors:home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'doctor_list' %}active{% endif %}" href="{% url 'doctors:doctor_list' %}">Find Doctors</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'emergency' %}active{% endif %}" href="{% url 'doctors:emergency' %}">Emergency</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}" href="{% url 'doctors:about' %}">About</a>
+                    </li>
+                </ul>
+                
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-dark me-2" title="Dark Mode">
+                        <i class="bi bi-moon"></i>
+                    </button>
+                    <div class="dropdown me-3">
+                        <button class="btn btn-link text-dark dropdown-toggle text-decoration-none" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-globe"></i> 
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">English</a></li>
+                            <li><a class="dropdown-item" href="#">Bangla</a></li>
+                        </ul>
+                    </div>
+                    <a href="tel:999" class="btn btn-outline-danger btn-sm me-2">
+                        <i class="bi bi-telephone-fill"></i> 999
+                    </a>
+                    <a href="#" class="btn btn-primary btn-sm">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark text-white py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="logo-icon me-2 text-primary">
+                            <i class="bi bi-heart-pulse-fill fs-4"></i>
+                        </div>
+                        <span class="logo-text fs-5">DrSeba<span class="text-primary">.com</span></span>
+                    </div>
+                    <p class="text-muted small">Your trusted healthcare partner in Bangladesh. Find verified doctors and book appointments online.</p>
+                    <div class="social-links">
+                        <a href="#" class="text-muted me-2"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="text-muted me-2"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="text-muted me-2"><i class="bi bi-instagram"></i></a>
+                        <a href="#" class="text-muted"><i class="bi bi-linkedin"></i></a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h6 class="mb-3">Quick Links</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'doctors:doctor_list' %}" class="text-muted text-decoration-none">Find Doctors</a></li>
+                        <li><a href="{% url 'doctors:emergency' %}" class="text-muted text-decoration-none">Emergency Services</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Health Articles</a></li>
+                        <li><a href="{% url 'doctors:hospital_list' %}" class="text-muted text-decoration-none">Hospitals</a></li>
+                        <li><a href="{% url 'doctors:about' %}" class="text-muted text-decoration-none">About Us</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h6 class="mb-3">For Doctors</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-muted text-decoration-none">Doctor Dashboard</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Register as Doctor</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Pricing</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Help Center</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h6 class="mb-3">Contact Us</h6>
+                    <ul class="list-unstyled text-muted">
+                        <li class="mb-2"><i class="bi bi-geo-alt me-2"></i> Dhaka, Bangladesh</li>
+                        <li class="mb-2"><i class="bi bi-telephone me-2"></i> +880 1700-000000</li>
+                        <li class="mb-2"><i class="bi bi-envelope me-2"></i> info@drseba.com</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <hr class="my-4 border-secondary">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted small mb-0">&copy; 2026 DrSeba.com. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-muted small text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-muted small text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-muted small text-decoration-none">Disclaimer</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
