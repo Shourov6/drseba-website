@@ -72,7 +72,9 @@ WSGI_APPLICATION = 'drseba.wsgi.application'
 # Database - Flexible MySQL/SQLite Configuration
 # Uses environment variables for database selection
 # Default: SQLite (for local development)
-# Production: Configure MySQL via environment variables
+# Product Configuration - Using MySQL
+# Force MySQL by setting environment variable
+os.environ.setdefault('DB_ENGINE', 'django.db.backends.mysql')
 
 DB_ENGINE_CHOICE = os.getenv('DB_ENGINE', 'django.db.backends.mysql')
 
