@@ -86,3 +86,13 @@ def home(request):
     }
     
     return render(request, 'home.html', context)
+
+
+def emergency(request):
+    """Emergency services page"""
+    return render(request, 'emergency.html')
+
+
+def about(request):
+    """About us page"""
+    return render(request, 'about.html')
