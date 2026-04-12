@@ -67,20 +67,83 @@ class PatientProfile(models.Model):
     ]
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
     
+    # Health metrics
     blood_group = models.CharField(max_length=5, blank=True)
+    height = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Height in cm")
+    weight = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Weight in kg")
+    
+    # Contact & Address
     address = models.TextField(blank=True)
     city = models.CharField(max_length=100, blank=True)
     district = models.CharField(max_length=100, blank=True)
-    emergency_contact = models.CharField(max_length=15, blank=True)
-    medical_history = models.TextField(blank=True, help_text="Any existing medical conditions")
-    allergies = models.TextField(blank=True)
-    profile_picture = models.ImageField(upload_to='patients/profiles/', blank=True, null=True)
     
-    # Favorite doctors
+    # Emergency Contact
+    emergency_contact_name = models.CharField(max_length=100, blank=True)
+    emergency_contact_phone = models.CharField(max_length=15, blank=True)
+    emergency_contact = models.CharField(max_length=15, blank=True)  # Keep for backward compatibility
+    secondary_emergency_contact = models.CharField(max_length=15, blank=True)
+    
+    # Personal Information
+    MARITAL_STATUS_CHOICES = [
+        ('single', 'Single'),
+        ('married', 'Married'),
+        ('divorced', 'Divorced'),
+        ('widowed', 'Widowed'),
+    ]
+    marital_status = models.CharField(max_length=20, choices=MARITAL_STATUS_CHOICES, blank=True)
+    occupation = models.CharField(max_length=100, blank=True)
+    number_of_children = models.IntegerField(default=0, blank=True)
+    
+    # Lifestyle
+    SMOKING_CHOICES = [
+        ('never', 'Never'),
+        ('former', 'Former Smoker'),
+        ('active', 'Active Smoker'),
+    ]
+    smoking_status = models.CharField(max_length=20, choices=SMOKING_CHOICES, blank=True)
+    
+    ALCOHOL_CHOICES = [
+        ('never', 'Never'),
+        ('occasional', 'Occasional'),
+        ('regular', 'Regular'),
+    ]
+    alcohol_consumption = models.CharField(max_length=20, choices=ALCOHOL_CHOICES, blank=True)
+    
+    # Medical Information
+    medical_history = models.TextField(blank=True, help_text="Any existing medical conditions")
+    chronic_diseases = models.TextField(blank=True, help_text="Chronic conditions (diabetes, hypertension, etc.)")
+    allergies = models.TextField(blank=True, help_text="Drug and food allergies")
+    current_medications = models.TextField(blank=True, help_text="Current medications being taken")
+    surgical_history = models.TextField(blank=True, help_text="Previous surgeries and procedures")
+    family_medical_history = models.TextField(blank=True, help_text="Family history of diseases")
+    last_checkup_date = models.DateField(null=True, blank=True)
+    notes_for_doctor = models.TextField(blank=True, help_text="Additional notes for doctors")
+    
+    # Insurance
+    insurance_provider = models.CharField(max_length=100, blank=True)
+    insurance_policy_number = models.CharField(max_length=50, blank=True)
+    
+    # Preferences
+    profile_picture = models.ImageField(upload_to='patients/profiles/', blank=True, null=True)
     favorite_doctors = models.ManyToManyField('doctors.Doctor', blank=True, related_name='favorited_by')
+    preferred_communication = models.CharField(
+        max_length=10, 
+        choices=[('email', 'Email'), ('sms', 'SMS'), ('both', 'Both')],
+        default='email',
+        help_text="Preferred method for appointment reminders"
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    @property
+    def age(self):
+        """Calculate age from date of birth"""
+        if not self.date_of_birth:
+            return None
+        from datetime import date
+        today = date.today()
+        return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
     
     class Meta:
         verbose_name = 'Patient Profile'
