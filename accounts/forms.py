@@ -8,7 +8,7 @@ from .models import User, PatientProfile
 
 
 class LoginForm(AuthenticationForm):
-    """Custom login form"""
+    """Custom login form - simplified"""
     username = forms.CharField(
         widget=forms.TextInput(attrs={
             'class': 'form-control',
@@ -23,50 +23,69 @@ class LoginForm(AuthenticationForm):
     )
 
 
-class PatientRegistrationForm(UserCreationForm):
-    """Patient registration form"""
+class SimpleUserCreationForm(UserCreationForm):
+    """Simplified user creation form with minimal validation"""
     
-    phone_regex = RegexValidator(
-        regex=r'^\+?8801[3-9]\d{8}$|^\d{10,}$',
-        message="Enter a valid phone number (e.g., +8801711111111 or 01711111111)"
-    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove password help text
+        self.fields['password1'].help_text = 'Any simple password (4+ characters)'
+        self.fields['password2'].help_text = 'Confirm your password'
+    
+    def clean_password1(self):
+        """Allow any password with at least 1 character"""
+        password1 = self.cleaned_data.get('password1')
+        if password1 and len(password1) < 1:
+            raise forms.ValidationError("Password must be at least 1 character.")
+        return password1
+    
+    def clean_password2(self):
+        """Check passwords match"""
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Passwords don't match.")
+        return password2
+
+
+class PatientRegistrationForm(SimpleUserCreationForm):
+    """Patient registration form - simplified and user friendly"""
     
     first_name = forms.CharField(
         max_length=30,
-        required=True,
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'First Name'
+            'placeholder': 'First Name (optional)'
         })
     )
     last_name = forms.CharField(
         max_length=30,
-        required=True,
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Last Name'
+            'placeholder': 'Last Name (optional)'
         })
     )
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Email Address'
+            'placeholder': 'Email Address (must be unique)'
         })
     )
     phone = forms.CharField(
-        validators=[phone_regex],
-        max_length=15,
+        max_length=20,
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Phone Number (optional)'
+            'placeholder': 'Phone Number (optional - any format)'
         })
     )
     password1 = forms.CharField(
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Password'
+            'placeholder': 'Password (4+ characters)'
         })
     )
     password2 = forms.CharField(
@@ -84,13 +103,28 @@ class PatientRegistrationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         self.fields['username'].widget.attrs.update({
             'class': 'form-control',
-            'placeholder': 'Username'
+            'placeholder': 'Username (must be unique)'
         })
+        self.fields['username'].help_text = 'Letters, digits and @/./+/-/_ only'
+    
+    def clean_email(self):
+        """Check email is unique"""
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        return email
+    
+    def clean_phone(self):
+        """Check phone is unique if provided"""
+        phone = self.cleaned_data.get('phone')
+        if phone and User.objects.filter(phone=phone).exists():
+            raise forms.ValidationError("This phone number is already registered.")
+        return phone
     
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        user.phone = self.cleaned_data['phone']
+        user.phone = self.cleaned_data.get('phone', '')
         user.role = 'patient'
         if commit:
             user.save()

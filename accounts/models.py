@@ -3,7 +3,6 @@ User models for DrSeba.com
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.validators import RegexValidator
 from django.conf import settings
 
 
@@ -18,11 +17,8 @@ class User(AbstractUser):
     ]
     
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='patient')
-    phone_regex = RegexValidator(
-        regex=r'^\+8801[3-9]\d{8}$',
-        message="Phone number must be in format: '+8801XXXXXXXXX'"
-    )
-    phone = models.CharField(validators=[phone_regex], max_length=15, blank=True, null=True)
+    # Phone number - optional, any format, unique if provided
+    phone = models.CharField(max_length=20, blank=True, null=True, unique=True)
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
