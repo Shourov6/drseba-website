@@ -4,6 +4,7 @@ Models for doctors app
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+import re
 
 
 class Specialty(models.Model):
@@ -102,12 +103,27 @@ class Doctor(models.Model):
         verbose_name = 'Doctor'
         verbose_name_plural = 'Doctors'
         ordering = ['-rating', '-total_reviews']
+
+    @staticmethod
+    def _strip_dr_prefix(value):
+        """Remove leading Dr prefixes like Dr, Dr., dr, dr."""
+        if not value:
+            return ''
+        return re.sub(r'^\s*dr\.?\s+', '', str(value), flags=re.IGNORECASE).strip()
+
+    def _clean_name(self):
+        first = self._strip_dr_prefix(self.user.first_name)
+        last = self._strip_dr_prefix(self.user.last_name)
+        full = f"{first} {last}".strip()
+        if full:
+            return full
+        return self._strip_dr_prefix(self.user.get_full_name() or self.user.username)
     
     def __str__(self):
-        return f"Dr. {self.user.get_full_name() or self.user.username}"
+        return f"Dr. {self._clean_name()}"
     
     def get_full_name(self):
-        return f"Dr. {self.user.get_full_name() or self.user.username}"
+        return f"Dr. {self._clean_name()}"
     
     def get_primary_specialty(self):
         return self.specialties.first()
@@ -129,15 +145,19 @@ class DoctorHospital(models.Model):
     room_number = models.CharField(max_length=20, blank=True)
     consultation_days = models.JSONField(default=list, help_text="List of days: ['Mon', 'Tue', etc]")
     
+    # Per-hospital fees
+    consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Consultation fee for this hospital")
+    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Service charge for this hospital")
+
     # Time slots (2-hour intervals)
     morning_start = models.TimeField(null=True, blank=True)
     morning_end = models.TimeField(null=True, blank=True)
     evening_start = models.TimeField(null=True, blank=True)
     evening_end = models.TimeField(null=True, blank=True)
-    
+
     is_primary = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -175,6 +195,43 @@ class Review(models.Model):
         self.doctor.update_rating()
 
 
+class DoctorWeeklySchedule(models.Model):
+    """Doctor's recurring weekly schedule"""
+    
+    DAYS_OF_WEEK = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='weekly_schedules')
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='doctor_weekly_schedules')
+    
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_active = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Doctor Weekly Schedule'
+        verbose_name_plural = 'Doctor Weekly Schedules'
+        ordering = ['day_of_week', 'start_time']
+        unique_together = ['doctor', 'hospital', 'day_of_week']
+    
+    def __str__(self):
+        return f"{self.doctor} - {self.get_day_of_week_display()} {self.start_time}-{self.end_time} @ {self.hospital}"
+    
+    def get_day_of_week_display(self):
+        return dict(self.DAYS_OF_WEEK).get(self.day_of_week, 'Unknown')
+
+
 class DoctorAvailability(models.Model):
     """Doctor's availability for appointments"""
     
@@ -194,6 +251,11 @@ class DoctorAvailability(models.Model):
     time_slot = models.CharField(max_length=20, choices=TIME_SLOTS)
     is_available = models.BooleanField(default=True)
     is_booked = models.BooleanField(default=False)
+    
+    # For custom schedule exceptions (optional, for special dates)
+    is_exception = models.BooleanField(default=False)  # True if this is a custom date override
+    custom_start_time = models.TimeField(null=True, blank=True)  # For custom exception times
+    custom_end_time = models.TimeField(null=True, blank=True)  # For custom exception times
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

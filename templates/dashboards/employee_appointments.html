@@ -109,8 +109,8 @@
                                                     <i class="bi bi-person-circle" style="color: #0A74DA;"></i>
                                                 </div>
                                                 <div>
-                                                    <p class="mb-0 fw-bold">{{ appt.patient.get_full_name }}</p>
-                                                    <small class="text-muted">{{ appt.patient.phone|default:"-" }}</small>
+                                                    <p class="mb-0 fw-bold">{% if appt.patient %}{{ appt.patient.get_full_name|default:appt.patient.username }}{% else %}{{ appt.guest_full_name|default:"Guest Patient" }}{% endif %}</p>
+                                                    <small class="text-muted">{% if appt.patient %}{{ appt.patient.phone|default:"-" }}{% else %}{{ appt.guest_phone|default:"-" }}{% endif %}</small>
                                                 </div>
                                             </div>
                                         </td>
@@ -126,7 +126,19 @@
                                             <span class="badge bg-success">In-Person</span>
                                             {% endif %}
                                         </td>
-                                        <td class="fw-bold">৳{{ appt.total_amount }}</td>
+                                        <td>
+                                            <input
+                                                type="number"
+                                                name="managing_cost"
+                                                class="form-control form-control-sm"
+                                                style="width: 130px;"
+                                                min="0"
+                                                step="0.01"
+                                                value="{{ appt.service_fee|floatformat:2 }}"
+                                                form="manageForm{{ appt.id }}"
+                                                required
+                                            >
+                                        </td>
                                         <td>
                                             {% if appt.status == 'pending' %}
                                             <span class="badge bg-warning text-dark">Pending</span>
@@ -139,12 +151,15 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-primary me-1" style="background-color: #0A74DA; border-color: #0A74DA;" data-bs-toggle="modal" data-bs-target="#viewModal{{ appt.id }}" title="View Details">
-                                                <i class="bi bi-eye"></i>View
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" title="Delete" onclick="if(confirm('Are you sure you want to delete this appointment?')) { window.location.href='{% url 'dashboard:employee_dashboard' %}'; alert('Appointment deleted!'); }">
-                                                <i class="bi bi-trash"></i>Delete
-                                            </button>
+                                            <form id="manageForm{{ appt.id }}" method="post" action="{% url 'dashboard:employee_manage_appointment' appt.id %}" class="d-flex align-items-center gap-2">
+                                                {% csrf_token %}
+                                                <button type="submit" name="action" value="confirm" class="btn btn-sm btn-success" title="Confirm and update managing cost">
+                                                    <i class="bi bi-check-circle me-1"></i>Confirm
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-primary" style="background-color: #0A74DA; border-color: #0A74DA;" data-bs-toggle="modal" data-bs-target="#viewModal{{ appt.id }}" title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
 

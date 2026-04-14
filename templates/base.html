@@ -161,18 +161,38 @@
         }
         
         .footer {
-            background: #0A74DA;
-            color: white;
-            padding: 60px 0 30px;
+            background-color: var(--white);
+            color: var(--dark-text);
+            border-top: 1px solid var(--subtle-border);
+            padding: 3rem 0 1rem 0;
+            margin-top: 5rem;
         }
-        
-        .footer a {
-            color: rgba(255,255,255,0.8);
+        .footer-section {
+            margin-bottom: 2rem;
+        }
+        .footer-title {
+            font-weight: 600;
+            color: var(--dark-text);
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+        .footer-link {
+            display: block;
+            color: var(--muted-gray);
             text-decoration: none;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            transition: color var(--transition-fast);
         }
-        
-        .footer a:hover {
-            color: white;
+        .footer-link:hover {
+            color: var(--primary-blue);
+        }
+        .footer-bottom {
+            border-top: 1px solid var(--subtle-border);
+            padding-top: 1.5rem;
+            text-align: center;
+            color: var(--muted-gray);
+            font-size: 0.85rem;
         }
         
         .dashboard-sidebar {
@@ -338,31 +358,21 @@
     {% block content %}{% endblock %}
     
     <!-- Footer -->
+    {% if 'accounts/login' not in request.path %}
     <footer>
         <div class="container py-5">
-            <div class="row g-4">
-                <!-- Brand Column -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-section">
-                        <div class="mb-3">
-                            <h6 class="footer-title" style="font-size: 1.25rem;">
-                                <span class="badge bg-primary">DS</span>
-                                DrSeba.com
-                            </h6>
-                        </div>
-                        <p class="text-muted" style="font-size: 0.9rem;">Your trusted healthcare platform for finding and booking appointments with verified doctors and hospitals.</p>
-                        <div class="mt-3">
-                            <a href="#" class="me-2" style="color: var(--primary-blue);"><i class="bi bi-facebook"></i></a>
-                            <a href="#" class="me-2" style="color: var(--primary-blue);"><i class="bi bi-twitter"></i></a>
-                            <a href="#" class="me-2" style="color: var(--primary-blue);"><i class="bi bi-instagram"></i></a>
-                            <a href="#" style="color: var(--primary-blue);"><i class="bi bi-linkedin"></i></a>
-                        </div>
-                    </div>
+            <div class="row justify-content-center mb-4">
+                <div class="col-12 text-center">
+                    <h6 class="footer-title mb-2" style="font-size: 1.5rem;">
+                        <span class="badge bg-primary">DS</span>
+                        DrSeba.com
+                    </h6>
+                    <p class="text-muted mb-2" style="font-size: 1rem;">Your trusted healthcare platform for finding and booking appointments with verified doctors and hospitals.</p>
                 </div>
-
-                <!-- Quick Links -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-section">
+            </div>
+            <div class="row justify-content-center mb-3">
+                <div class="col-md-3 col-6 mb-3 mb-md-0">
+                    <div class="footer-section text-center">
                         <h6 class="footer-title">Quick Links</h6>
                         <a href="{% url 'home' %}" class="footer-link">Home</a>
                         <a href="{% url 'doctors:list' %}" class="footer-link">Find Doctors</a>
@@ -371,10 +381,16 @@
                         <a href="#" class="footer-link">Partner Hospitals</a>
                     </div>
                 </div>
-
-                <!-- For Doctors -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-section">
+                <div class="col-md-3 col-6 mb-3 mb-md-0">
+                    <div class="footer-section text-center">
+                        <h6 class="footer-title">Legal</h6>
+                        <a href="#" class="footer-link">Privacy Policy</a>
+                        <a href="#" class="footer-link">Terms of Service</a>
+                        <a href="#" class="footer-link">Disclaimer</a>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3 mb-md-0">
+                    <div class="footer-section text-center">
                         <h6 class="footer-title">For Doctors</h6>
                         <a href="{% url 'dashboard:doctor_dashboard' %}" class="footer-link">Doctor Dashboard</a>
                         <a href="{% url 'accounts:doctor_register' %}" class="footer-link">Register as Doctor</a>
@@ -383,10 +399,8 @@
                         <a href="#" class="footer-link">Blog</a>
                     </div>
                 </div>
-
-                <!-- Contact Info -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-section">
+                <div class="col-md-3 col-12">
+                    <div class="footer-section text-center">
                         <h6 class="footer-title">Contact Us</h6>
                         <div class="mb-2">
                             <small style="color: var(--muted-gray);"><i class="bi bi-geo-alt me-2"></i>Dhaka, Bangladesh</small>
@@ -403,22 +417,17 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Footer Bottom -->
-            <div class="footer-bottom">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <p class="mb-0">&copy; {% now "Y" %} DrSeba.com. All rights reserved.</p>
-                    </div>
-                    <div class="col-md-6 text-md-end">
-                        <a href="#" class="footer-link me-3">Privacy Policy</a>
-                        <a href="#" class="footer-link me-3">Terms of Service</a>
-                        <a href="#" class="footer-link">Disclaimer</a>
-                    </div>
+            <div class="row justify-content-center mb-2">
+                <!-- Legal links moved to beside Quick Links -->
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-12 text-center">
+                    <p class="mb-0">&copy; {% now "Y" %} DrSeba.com. All rights reserved.</p>
                 </div>
             </div>
         </div>
     </footer>
+    {% endif %}
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -72,7 +72,7 @@
                         <a href="{% url 'dashboard:admin_doctors' %}" class="text-muted text-decoration-none small me-2">
                             <i class="bi bi-arrow-left me-1"></i>Back to Doctors
                         </a>
-                        <h4 class="fw-bold mb-1 mt-2">Dr. {{ doctor.get_full_name }}</h4>
+                        <h4 class="fw-bold mb-1 mt-2">{{ doctor.get_full_name }}</h4>
                         <small class="text-muted">DOC-{{ doctor.id }}</small>
                     </div>
                     <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#editDoctorModal">
@@ -94,7 +94,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label text-muted small">Name</label>
-                                <p class="mb-0 fw-bold">Dr. {{ doctor.get_full_name }}</p>
+                                <p class="mb-0 fw-bold">{{ doctor.get_full_name }}</p>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label text-muted small">Age</label>
@@ -268,7 +268,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Email</label>
-                            <input type="email" class="form-control" value="{{ doctor.user.email }}" disabled>
+                            <input type="email" class="form-control" id="doctorEmail" name="email" value="{{ doctor.user.email }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Phone</label>
@@ -282,10 +282,31 @@
                             <label class="form-label fw-bold">Years of Experience</label>
                             <input type="number" class="form-control" id="doctorExperience" name="experience_years" value="{{ doctor.experience_years }}" min="0" required>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Specialty</label>
+                            <select class="form-select" id="doctorSpecialty" name="specialty" required>
+                                <option value="">Select Specialty</option>
+                                {% for specialty in specialties %}
+                                    <option value="{{ specialty.id }}" {% if doctor.specialties.first and doctor.specialties.first.id == specialty.id %}selected{% endif %}>{{ specialty.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Commission Percentage (%)</label>
+                            <input type="number" class="form-control" id="doctorCommission" name="commission_rate" value="{{ doctor.commission_rate }}" min="0" max="100" step="0.01" required>
+                        </div>
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Qualifications</label>
                             <textarea class="form-control" id="doctorQualifications" name="qualifications" rows="2">{{ doctor.qualifications }}</textarea>
                             <small class="text-muted">Separate multiple qualifications with a pipe (|)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">New Password</label>
+                            <input type="password" class="form-control" id="doctorPassword" name="password" placeholder="Leave blank to keep current password">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Confirm New Password</label>
+                            <input type="password" class="form-control" id="doctorPasswordConfirm" name="confirm_password" placeholder="Confirm new password">
                         </div>
                         <div class="col-md-6">
                             <div class="form-check">
@@ -303,7 +324,7 @@
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold" onclick="submitEditDoctor({{ doctor.id }})">
+                    <button type="button" class="btn btn-primary fw-bold" onclick="submitEditDoctor({{ doctor.id }})">
                         <i class="bi bi-check-lg me-2"></i>Save Changes
                     </button>
                 </div>
@@ -332,25 +353,49 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Morning Start Time</label>
-                            <input type="time" class="form-control" id="morningStart" name="morning_start">
+                            <input type="hidden" id="morningStart" name="morning_start" value="">
+                            <div class="d-flex gap-1 align-items-center">
+                                <select class="form-select" id="morningStartHour" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
+                                <span class="small text-muted">:</span>
+                                <select class="form-select" id="morningStartMinute" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
+                                <select class="form-select" id="morningStartPeriod" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Morning End Time</label>
-                            <input type="time" class="form-control" id="morningEnd" name="morning_end">
+                            <input type="hidden" id="morningEnd" name="morning_end" value="">
+                            <div class="d-flex gap-1 align-items-center">
+                                <select class="form-select" id="morningEndHour" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
+                                <span class="small text-muted">:</span>
+                                <select class="form-select" id="morningEndMinute" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
+                                <select class="form-select" id="morningEndPeriod" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Evening Start Time</label>
-                            <input type="time" class="form-control" id="eveningStart" name="evening_start">
+                            <input type="hidden" id="eveningStart" name="evening_start" value="">
+                            <div class="d-flex gap-1 align-items-center">
+                                <select class="form-select" id="eveningStartHour" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
+                                <span class="small text-muted">:</span>
+                                <select class="form-select" id="eveningStartMinute" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
+                                <select class="form-select" id="eveningStartPeriod" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Evening End Time</label>
-                            <input type="time" class="form-control" id="eveningEnd" name="evening_end">
+                            <input type="hidden" id="eveningEnd" name="evening_end" value="">
+                            <div class="d-flex gap-1 align-items-center">
+                                <select class="form-select" id="eveningEndHour" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
+                                <span class="small text-muted">:</span>
+                                <select class="form-select" id="eveningEndMinute" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
+                                <select class="form-select" id="eveningEndPeriod" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold" onclick="submitEditSchedule({{ doctor.id }})">
+                    <button type="button" class="btn btn-primary fw-bold" onclick="submitEditSchedule({{ doctor.id }})">
                         <i class="bi bi-check-lg me-2"></i>Save Changes
                     </button>
                 </div>
@@ -434,11 +479,97 @@ function submitEditDoctor(doctorId) {
 function loadScheduleData(scheduleId, days, morningStart, morningEnd, eveningStart, eveningEnd) {
     document.getElementById('scheduleId').value = scheduleId;
     document.getElementById('consultationDays').value = days;
-    document.getElementById('morningStart').value = morningStart;
-    document.getElementById('morningEnd').value = morningEnd;
-    document.getElementById('eveningStart').value = eveningStart;
-    document.getElementById('eveningEnd').value = eveningEnd;
+
+    setEditTimeFromValue('morningStart', morningStart);
+    setEditTimeFromValue('morningEnd', morningEnd);
+    setEditTimeFromValue('eveningStart', eveningStart);
+    setEditTimeFromValue('eveningEnd', eveningEnd);
 }
+
+function buildEditSelectOptions(start, end, padToTwo = false) {
+    let html = '<option value="">--</option>';
+    for (let i = start; i <= end; i++) {
+        const v = padToTwo ? String(i).padStart(2, '0') : String(i);
+        html += `<option value="${v}">${v}</option>`;
+    }
+    return html;
+}
+
+function initializeEditTimeSelects() {
+    const timeFields = ['morningStart', 'morningEnd', 'eveningStart', 'eveningEnd'];
+
+    timeFields.forEach((base) => {
+        const hour = document.getElementById(`${base}Hour`);
+        const minute = document.getElementById(`${base}Minute`);
+        const period = document.getElementById(`${base}Period`);
+
+        if (!hour || !minute || !period) {
+            return;
+        }
+
+        hour.innerHTML = buildEditSelectOptions(1, 12, true);
+        minute.innerHTML = buildEditSelectOptions(0, 59, true);
+        period.innerHTML = '<option value="">--</option><option value="AM">AM</option><option value="PM">PM</option>';
+    });
+}
+
+function syncEditTime(hiddenId, hourId, minuteId, periodId) {
+    const hidden = document.getElementById(hiddenId);
+    const hour = document.getElementById(hourId)?.value || '';
+    const minute = document.getElementById(minuteId)?.value || '';
+    const period = document.getElementById(periodId)?.value || '';
+
+    if (!hidden) {
+        return;
+    }
+
+    if (hour && minute && period) {
+        hidden.value = `${hour}:${minute} ${period}`;
+    } else {
+        hidden.value = '';
+    }
+}
+
+function setEditTimeFromValue(base, value) {
+    const hidden = document.getElementById(base);
+    const hour = document.getElementById(`${base}Hour`);
+    const minute = document.getElementById(`${base}Minute`);
+    const period = document.getElementById(`${base}Period`);
+
+    if (!hidden || !hour || !minute || !period) {
+        return;
+    }
+
+    if (!value) {
+        hidden.value = '';
+        hour.value = '';
+        minute.value = '';
+        period.value = '';
+        return;
+    }
+
+    const parts = String(value).split(':');
+    if (parts.length !== 2) {
+        return;
+    }
+
+    const hr24 = parseInt(parts[0], 10);
+    const min = parseInt(parts[1], 10);
+
+    if (Number.isNaN(hr24) || Number.isNaN(min)) {
+        return;
+    }
+
+    const selectedPeriod = hr24 >= 12 ? 'PM' : 'AM';
+    const hr12 = hr24 % 12 === 0 ? 12 : (hr24 % 12);
+
+    hour.value = String(hr12).padStart(2, '0');
+    minute.value = String(min).padStart(2, '0');
+    period.value = selectedPeriod;
+    hidden.value = `${hour.value}:${minute.value} ${period.value}`;
+}
+
+document.addEventListener('DOMContentLoaded', initializeEditTimeSelects);
 
 function submitEditSchedule(doctorId) {
     const scheduleId = document.getElementById('scheduleId').value;

@@ -74,8 +74,8 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-muted mb-1 small">Total Revenue</p>
-                                        <h4 class="fw-bold mb-2">৳7,650</h4>
-                                        <small class="text-success">+23.1% from last month</small>
+                                        <h4 class="fw-bold mb-2">৳{{ total_revenue|floatformat:2 }}</h4>
+                                        <small class="text-success">From completed payments</small>
                                     </div>
                                     <i class="bi bi-currency-dollar" style="font-size: 1.5rem; color: #28A745;"></i>
                                 </div>
@@ -88,7 +88,7 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-muted mb-1 small">Pending Payments</p>
-                                        <h4 class="fw-bold mb-2">৳1,800</h4>
+                                        <h4 class="fw-bold mb-2">৳{{ pending_amount|floatformat:2 }}</h4>
                                         <small class="text-warning">Need follow-up</small>
                                     </div>
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; color: #FFC107;"></i>
@@ -102,8 +102,8 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-muted mb-1 small">Overdue Amount</p>
-                                        <h4 class="fw-bold mb-2">৳4,500</h4>
-                                        <small class="text-danger">+12.3% this month</small>
+                                        <h4 class="fw-bold mb-2">৳{{ overdue_amount|floatformat:2 }}</h4>
+                                        <small class="text-danger">Past due pending</small>
                                     </div>
                                     <i class="bi bi-exclamation-circle" style="font-size: 1.5rem; color: #DC3545;"></i>
                                 </div>
@@ -163,26 +163,38 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {% for row in payment_rows %}
                                     <tr>
-                                        <td>INV-001</td>
-                                        <td><a href="#" class="text-primary text-decoration-none">Mohammad Karim Uddin</a></td>
-                                        <td>Dr. Rahim Ahmed</td>
-                                        <td class="fw-bold">৳2,500</td>
-                                        <td class="small text-muted">৳200</td>
-                                        <td class="small">2026-03-28</td>
-                                        <td><i class="bi bi-credit-card"></i> Credit Card</td>
+                                        <td>{{ row.invoice_id }}</td>
+                                        <td><a href="#" class="text-primary text-decoration-none">{{ row.patient_name }}</a></td>
+                                        <td>{{ row.doctor_name }}</td>
+                                        <td class="fw-bold">৳{{ row.amount|floatformat:2 }}</td>
+                                        <td class="small text-muted">৳{{ row.service_charge|floatformat:2 }}</td>
+                                        <td class="small">{{ row.date|date:"Y-m-d" }}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" onclick="viewInvoice('INV-001', 'Mohammad Karim Uddin', 'Dr. Rahim Ahmed', '2500', '200', '2026-03-28')">
+                                            <i class="bi {{ row.method_icon }}"></i>
+                                            {{ row.method_display }}
+                                            <span class="badge {% if row.payment_status == 'completed' %}bg-success{% elif row.payment_status == 'processing' %}bg-info{% else %}bg-warning text-dark{% endif %} ms-1">
+                                                {{ row.payment_status|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#viewInvoiceModal" onclick="viewInvoice('{{ row.invoice_id }}', '{{ row.patient_name|escapejs }}', '{{ row.doctor_name|escapejs }}', '{{ row.amount|floatformat:2 }}', '{{ row.service_charge|floatformat:2 }}', '{{ row.date|date:'Y-m-d' }}')">
                                                 <i class="bi bi-eye"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-link text-primary p-0 me-2" onclick="downloadInvoice('INV-001')">
+                                            <button class="btn btn-sm btn-link text-primary p-0 me-2" onclick="downloadInvoice('{{ row.invoice_id }}')">
                                                 <i class="bi bi-download"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#flagPaymentModal" onclick="flagPayment('INV-001')">
+                                            <button class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#flagPaymentModal" onclick="flagPayment('{{ row.invoice_id }}')">
                                                 <i class="bi bi-flag"></i>
                                             </button>
                                         </td>
                                     </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-muted">No payments or booked appointments found</td>
+                                    </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -194,18 +206,24 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <div class="list-group list-group-flush">
+                            {% for row in recent_transactions %}
                             <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-success bg-opacity-10 p-2 rounded me-3">
-                                        <i class="bi bi-currency-dollar text-success"></i>
+                                    <div class="{% if row.payment_status == 'completed' %}bg-success{% elif row.payment_status == 'processing' %}bg-info{% else %}bg-warning{% endif %} bg-opacity-10 p-2 rounded me-3">
+                                        <i class="bi {{ row.method_icon }} {% if row.payment_status == 'completed' %}text-success{% elif row.payment_status == 'processing' %}text-info{% else %}text-warning{% endif %}"></i>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 small fw-bold">Mohammad Karim Uddin</h6>
-                                        <small class="text-muted">INV-001 • Credit Card</small>
+                                        <h6 class="mb-0 small fw-bold">{{ row.patient_name }}</h6>
+                                        <small class="text-muted">{{ row.invoice_id }} • {{ row.method_display }}</small>
                                     </div>
                                 </div>
-                                <span class="fw-bold">৳2500</span>
+                                <span class="fw-bold">৳{{ row.total_amount|floatformat:2 }}</span>
                             </div>
+                            {% empty %}
+                            <div class="list-group-item px-0 py-3 text-center text-muted">
+                                No recent transactions
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>

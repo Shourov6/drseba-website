@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Doctor Profile - DrSeba.com{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-3">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body text-center">
+                    {% if doctor.profile_picture %}
+                        <img src="{{ doctor.profile_picture.url }}" class="rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;" alt="Doctor photo">
+                    {% else %}
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px;">
+                            <i class="bi bi-person fs-1 text-primary"></i>
+                        </div>
+                    {% endif %}
+                    <h5 class="fw-bold mb-1">Dr. {{ user.first_name }} {{ user.last_name }}</h5>
+                    <p class="text-muted mb-0">Doctor Profile</p>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'dashboard:doctor_profile' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-person me-2"></i>Profile
+                    </a>
+                    <a href="{% url 'dashboard:doctor_profile_edit' %}" class="list-group-item list-group-item-action active">
+                        <i class="bi bi-pencil me-2"></i>Edit Profile
+                    </a>
+                    <a href="{% url 'dashboard:doctor_dashboard' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                    </a>
+                    <a href="{% url 'appointments:doctor_appointments' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-calendar-check me-2"></i>Appointments
+                    </a>
+                    <a href="{% url 'payments:doctor_earnings' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-cash-stack me-2"></i>Earnings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1">Edit Doctor Profile</h4>
+                            <p class="text-muted mb-0">Update your credentials, fees, and photos</p>
+                        </div>
+                        <a href="{% url 'dashboard:doctor_profile' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Profile
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="id_qualifications">Qualifications</label>
+                                {{ form.qualifications }}
+                                {% if form.qualifications.errors %}
+                                    <div class="text-danger small mt-1">{{ form.qualifications.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="id_experience_years">Experience Years</label>
+                                {{ form.experience_years }}
+                                {% if form.experience_years.errors %}
+                                    <div class="text-danger small mt-1">{{ form.experience_years.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="id_consultation_fee_online">Online Consultation Fee</label>
+                                {{ form.consultation_fee_online }}
+                                {% if form.consultation_fee_online.errors %}
+                                    <div class="text-danger small mt-1">{{ form.consultation_fee_online.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="id_consultation_fee_in_person">In-Person Consultation Fee</label>
+                                {{ form.consultation_fee_in_person }}
+                                {% if form.consultation_fee_in_person.errors %}
+                                    <div class="text-danger small mt-1">{{ form.consultation_fee_in_person.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="id_about">About</label>
+                                {{ form.about }}
+                                {% if form.about.errors %}
+                                    <div class="text-danger small mt-1">{{ form.about.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="id_profile_picture">Profile Picture</label>
+                                {{ form.profile_picture }}
+                                {% if doctor.profile_picture %}
+                                    <div class="form-text">Current file: {{ doctor.profile_picture.name }}</div>
+                                {% endif %}
+                                {% if form.profile_picture.errors %}
+                                    <div class="text-danger small mt-1">{{ form.profile_picture.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="id_cover_image">Cover Image</label>
+                                {{ form.cover_image }}
+                                {% if doctor.cover_image %}
+                                    <div class="form-text">Current file: {{ doctor.cover_image.name }}</div>
+                                {% endif %}
+                                {% if form.cover_image.errors %}
+                                    <div class="text-danger small mt-1">{{ form.cover_image.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check2-circle me-2"></i>Save Changes
+                            </button>
+                            <a href="{% url 'dashboard:doctor_profile' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

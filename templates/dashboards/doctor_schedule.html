@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Schedule Management - DrSeba.com{% endblock %}
 
@@ -22,8 +23,8 @@
                 <!-- User Section -->
                 <div class="mb-4 pb-3 border-bottom">
                     <div class="d-flex align-items-center">
-                        {% if doctor.profile_picture %}
-                            <img src="{{ doctor.profile_picture.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="">
+                        {% if user.doctor_profile.profile_picture %}
+                            <img src="{{ user.doctor_profile.profile_picture.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="">
                         {% else %}
                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
                                 <span class="fw-bold text-primary">D</span>
@@ -70,126 +71,180 @@
         <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="p-4">
-        <!-- Header -->
-        <div class="mb-4">
-            <h4 class="fw-bold mb-1">Schedule Management</h4>
-            <p class="text-muted mb-0">Manage your working hours and hospital schedules</p>
-        </div>
+                <!-- Header -->
+                <div class="mb-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="fw-bold mb-1">Working Hours Schedule</h4>
+                        <p class="text-muted mb-0">Set your recurring weekly working hours</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addScheduleModal">
+                        <i class="bi bi-plus-circle me-2"></i>Add Schedule
+                    </button>
+                </div>
 
-        <!-- Hospital Schedules -->
-        {% if hospitals %}
-        <div class="row g-3">
-            {% for hospital in hospitals %}
-            <div class="col-12 col-md-6">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-0">{{ hospital.hospital.name }}</h6>
-                            <small class="text-muted">{{ hospital.department|default:"General Department" }}</small>
-                        </div>
-                        <span class="badge bg-success">Active</span>
+                <!-- Weekly Schedule by Hospital -->
+                {% if hospitals %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-bold mb-0">Your Weekly Schedule</h6>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <small class="text-muted fw-bold d-block mb-2">Working Days</small>
-                            <p class="mb-0">
-                                {% if hospital.working_days %}
-                                    {{ hospital.working_days }}
-                                {% else %}
-                                    <span class="text-secondary">Not specified</span>
-                                {% endif %}
-                            </p>
+                        {% if not weeklySchedules %}
+                        <div class="alert alert-warning mb-4" role="alert">
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                            No schedule added yet. Use <strong>Add Schedule</strong> to create your weekly slots.
                         </div>
-                        <div class="mb-3">
-                            <small class="text-muted fw-bold d-block mb-2">Morning Hours</small>
-                            <p class="mb-0">
-                                {% if hospital.morning_start_time and hospital.morning_end_time %}
-                                    {{ hospital.morning_start_time|time:"H:i" }} - {{ hospital.morning_end_time|time:"H:i" }}
-                                {% else %}
-                                    <span class="text-secondary">Not set</span>
-                                {% endif %}
-                            </p>
+                        {% endif %}
+
+                        {% for hospital in hospitals %}
+                        <div class="mb-4">
+                            <div class="border-bottom pb-3 mb-3">
+                                <h6 class="fw-bold text-primary">{{ hospital.hospital.name }}</h6>
+                                <small class="text-muted">Consultation Fee: ৳{{ hospital.consultation_fee }} | Service Charge: ৳{{ hospital.service_charge }}</small>
+                            </div>
+                            
+                            <!-- Days Grid for this Hospital -->
+                            <div class="row g-2">
+                                {% for schedule in weeklySchedules %}
+                                    {% if schedule.hospital.id == hospital.hospital.id %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="fw-bold mb-1">{{ schedule.get_day_of_week_display }}</h6>
+                                                        <p class="mb-0 small">
+                                                            <i class="bi bi-clock"></i>
+                                                            {{ schedule.start_time|time:"h:i A" }} - {{ schedule.end_time|time:"h:i A" }}
+                                                        </p>
+                                                        <span class="badge {% if schedule.is_active %}bg-success{% else %}bg-danger{% endif %} mt-2">
+                                                            {% if schedule.is_active %}Active{% else %}Inactive{% endif %}
+                                                        </span>
+                                                    </div>
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <form method="post" action="{% url 'dashboard:doctor_toggle_schedule_status' schedule.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm {% if schedule.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                                                                {% if schedule.is_active %}
+                                                                    <i class="bi bi-pause-circle me-1"></i>Deactivate
+                                                                {% else %}
+                                                                    <i class="bi bi-play-circle me-1"></i>Activate
+                                                                {% endif %}
+                                                            </button>
+                                                        </form>
+                                                        <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteWeeklySchedule({{ schedule.id }})">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <small class="text-muted fw-bold d-block mb-2">Evening Hours</small>
-                            <p class="mb-0">
-                                {% if hospital.evening_start_time and hospital.evening_end_time %}
-                                    {{ hospital.evening_start_time|time:"H:i" }} - {{ hospital.evening_end_time|time:"H:i" }}
-                                {% else %}
-                                    <span class="text-secondary">Not set</span>
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#editScheduleModal" onclick="setScheduleData({{ hospital.id }}, '{{ hospital.hospital.name }}')">
-                                <i class="bi bi-pencil me-1"></i>Edit Schedule
-                            </button>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center py-5">
-                <i class="bi bi-calendar-x fs-1 text-muted"></i>
-                <p class="mt-3 text-muted">No hospital schedules configured yet</p>
-                <p class="text-muted small">Contact your hospital or system administrator to add your schedule</p>
-            </div>
-        </div>
-        {% endif %}
+                {% else %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
+                        <p class="mt-3 text-muted">No hospitals configured yet</p>
+                        <p class="text-muted small">Contact your admin to add hospital associations</p>
+                    </div>
+                </div>
+                {% endif %}
 
-        <!-- Quick Info Card -->
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white border-bottom">
-                <h5 class="fw-bold mb-0">Schedule Tips</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info mb-0" role="alert">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Your schedule information helps patients find the best time to book appointments with you. 
-                    Keep your hospital schedules updated to ensure accurate availability.
+                <!-- Info Card -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-bold mb-0">How Your Schedule Works</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li><strong>Weekly Recurring:</strong> Your schedule repeats every week (Monday to Sunday)</li>
+                            <li><strong>Per Hospital:</strong> You can have different hours at each hospital</li>
+                            <li><strong>Patient Booking:</strong> Patients see your availability slots generated from this weekly schedule</li>
+                            <li><strong>2-Hour Slots:</strong> The system generates 2-hour appointment slots within your working hours</li>
+                            <li><strong>Deactivate/Activate:</strong> Inactive schedules are hidden from upcoming availability generation</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Edit Schedule Modal -->
-<div class="modal fade" id="editScheduleModal" tabindex="-1" aria-labelledby="editScheduleModalLabel" aria-hidden="true">
+<!-- Add Schedule Modal -->
+<div class="modal fade" id="addScheduleModal" tabindex="-1" aria-labelledby="addScheduleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0">
-            <div class="modal-header border-bottom">
-                <h5 class="modal-title fw-bold" id="editScheduleModalLabel">Edit Schedule</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info" role="alert">
-                    <small>Schedule editing is managed by the admin panel. Please contact your administrator to update schedules.</small>
+        <div class="modal-content border-0 shadow">
+            <form method="post" action="{% url 'dashboard:doctor_add_schedule' %}">
+                {% csrf_token %}
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold" id="addScheduleModalLabel">Add Weekly Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form>
+                <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Hospital</label>
-                        <input type="text" class="form-control" id="hospitalName" disabled>
+                        <label class="form-label fw-semibold">Hospital</label>
+                        <select name="hospital_id" class="form-select" required>
+                            <option value="">Select hospital</option>
+                            {% for hospital in hospitals %}
+                            <option value="{{ hospital.id }}">{{ hospital.hospital.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Status</label>
-                        <p class="text-muted">Currently managed by administrators</p>
+                        <label class="form-label fw-semibold">Day</label>
+                        <select name="day_of_week" class="form-select" required>
+                            <option value="">Select day</option>
+                            <option value="0">Monday</option>
+                            <option value="1">Tuesday</option>
+                            <option value="2">Wednesday</option>
+                            <option value="3">Thursday</option>
+                            <option value="4">Friday</option>
+                            <option value="5">Saturday</option>
+                            <option value="6">Sunday</option>
+                        </select>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer border-top">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-semibold">Start Time</label>
+                            <input type="time" name="start_time" class="form-control" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-semibold">End Time</label>
+                            <input type="time" name="end_time" class="form-control" required>
+                        </div>
+                    </div>
+                    <small class="text-muted">If a schedule already exists for this day and hospital, it will be updated.</small>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Schedule</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
-    function setScheduleData(scheduleId, hospitalName) {
-        document.getElementById('hospitalName').value = hospitalName;
+function deleteWeeklySchedule(scheduleId) {
+    if (confirm('Are you sure you want to delete this schedule? This cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url 'dashboard:doctor_delete_schedule' %}';
+        form.innerHTML = `
+            {% csrf_token %}
+            <input type="hidden" name="schedule_id" value="${scheduleId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
     }
+}
 </script>
 
 <style>
@@ -197,25 +252,21 @@
         border-radius: 8px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    
+
     .card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
     }
-    
+
     .btn-outline-primary {
         border-color: #0A74DA;
         color: #0A74DA;
     }
-    
+
     .btn-outline-primary:hover {
         background-color: #0A74DA;
         border-color: #0A74DA;
     }
 </style>
-            </div>
-        </div>
-    </div>
-</div>
 
 {% endblock %}

@@ -18,6 +18,9 @@ urlpatterns = [
     path('doctor/profile/', views.doctor_profile, name='doctor_profile'),
     path('doctor/profile/edit/', views.doctor_profile_edit, name='doctor_profile_edit'),
     path('doctor/schedule/', views.doctor_schedule, name='doctor_schedule'),
+    path('doctor/schedule/add/', views.doctor_add_schedule, name='doctor_add_schedule'),
+    path('doctor/schedule/<int:schedule_id>/toggle/', views.doctor_toggle_schedule_status, name='doctor_toggle_schedule_status'),
+    path('doctor/schedule/delete/', views.doctor_delete_schedule, name='doctor_delete_schedule'),
     path('doctor/notifications/', views.doctor_notifications, name='doctor_notifications'),
     
     # Admin dashboard
@@ -32,6 +35,8 @@ urlpatterns = [
     path('admin/employees/<int:employee_id>/update/', views.update_employee, name='update_employee'),
     path('admin/employees/<int:employee_id>/delete/', views.delete_employee, name='delete_employee'),
     path('admin/doctors/', views.admin_doctors, name='admin_doctors'),
+    path('admin/doctors/new/', views.admin_doctor_create, name='admin_doctor_create'),
+    path('admin/patient/<int:user_id>/', views.admin_patient_detail, name='admin_patient_detail'),
     path('admin/doctors/<int:doctor_id>/', views.admin_doctor_detail, name='admin_doctor_detail'),
     path('admin/doctors/<int:doctor_id>/update/', views.update_doctor_details, name='update_doctor_details'),
     path('admin/doctors/<int:doctor_id>/schedule/<int:schedule_id>/update/', views.update_hospital_schedule, name='update_hospital_schedule'),
@@ -44,6 +49,7 @@ urlpatterns = [
     path('admin/hospitals/update/<int:hospital_id>/', views.update_hospital, name='update_hospital'),
     path('admin/hospitals/create/', views.create_hospital, name='create_hospital'),
     path('admin/appointments/', views.admin_appointments, name='admin_appointments'),
+    path('admin/appointments/<int:appointment_id>/assign/', views.assign_appointment_employee, name='assign_appointment_employee'),
     path('admin/appointments/<int:appointment_id>/delete/', views.delete_appointment, name='delete_appointment'),
     path('admin/appointments/<int:appointment_id>/update/', views.update_appointment, name='update_appointment'),
     path('admin/appointments/search/', views.search_appointments, name='search_appointments'),
@@ -59,4 +65,5 @@ urlpatterns = [
     path('employee/', views.employee_dashboard, name='employee_dashboard'),
     path('employee/appointments/', views.employee_appointments, name='employee_appointments'),
     path('employee/confirm/<int:appointment_id>/', views.employee_confirm_appointment, name='employee_confirm_appointment'),
+    path('employee/appointments/<int:appointment_id>/manage/', views.employee_manage_appointment, name='employee_manage_appointment'),
 ]

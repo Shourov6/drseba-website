@@ -70,15 +70,13 @@
                 </a>
             </div>
             <div class="col-md-3 col-6">
-                <button type="button" class="text-decoration-none border-0 bg-transparent w-100" data-bs-toggle="modal" data-bs-target="#diagnosticModal" style="cursor: pointer;">
-                    <div class="service-card">
-                        <div class="service-icon bg-success bg-opacity-10 text-success">
-                            <i class="bi bi-flask-vial"></i>
-                        </div>
-                        <h6 class="fw-bold">{{ translations.diagnostic }}</h6>
-                        <small class="text-muted">{{ translations.book_lab_tests }}</small>
+                <div class="service-card">
+                    <div class="service-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-microscope"></i>
                     </div>
-                </button>
+                    <h6 class="fw-bold">{{ translations.diagnostic }}</h6>
+                    <small class="text-muted">{{ translations.book_lab_tests }}</small>
+                </div>
             </div>
             <div class="col-md-3 col-6">
                 <button type="button" class="text-decoration-none border-0 bg-transparent w-100" data-bs-toggle="modal" data-bs-target="#ambulanceModal" style="cursor: pointer;">
@@ -202,13 +200,13 @@
             <div class="col-lg-4 col-md-6">
                 <div class="doctor-card p-4">
                     <div class="d-flex align-items-start mb-3">
-                        {% if doctor.profile_image %}
-                            <img src="{{ doctor.profile_image.url }}" class="doctor-img me-3" alt="Dr. {{ doctor.first_name }} {{ doctor.last_name }}">
+                        {% if doctor.profile_picture %}
+                            <img src="{{ doctor.profile_picture.url }}" class="doctor-img me-3" alt="{{ doctor.get_full_name }}">
                         {% else %}
-                            <img src="https://via.placeholder.com/60?text={{ doctor.first_name|first }}" class="doctor-img me-3" alt="Dr. {{ doctor.first_name }} {{ doctor.last_name }}">
+                            <img src="/static/default-user.png" class="doctor-img me-3" alt="{{ doctor.get_full_name }}">
                         {% endif %}
                         <div class="flex-grow-1">
-                            <h6 class="fw-bold mb-1">Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h6>
+                            <h6 class="fw-bold mb-1">{{ doctor.get_full_name }}</h6>
                             {% if doctor.specialties.all %}
                                 <small class="text-muted">{{ doctor.specialties.all|first }}</small>
                             {% else %}
@@ -236,8 +234,8 @@
                         </div>
                     </div>
                     <div class="d-grid gap-2 d-md-flex">
-                        <a href="/doctors/" class="btn btn-outline-primary flex-fill">{{ translations.view_profile }}</a>
-                        <a href="/doctors/" class="btn btn-primary flex-fill">{{ translations.book_now }}</a>
+                        <a href="{% url 'doctors:detail' doctor.pk %}" class="btn btn-outline-primary flex-fill">{{ translations.view_profile }}</a>
+                        <a href="{% url 'appointments:book_doctor' doctor.pk %}" class="btn btn-primary flex-fill">{{ translations.book_now }}</a>
                     </div>
                 </div>
             </div>

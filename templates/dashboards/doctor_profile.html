@@ -25,9 +25,7 @@
                         {% if doctor.profile_picture %}
                             <img src="{{ doctor.profile_picture.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="">
                         {% else %}
-                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
-                                <span class="fw-bold text-primary">D</span>
-                            </div>
+                            <img src="/static/img/default-user.png" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="No Photo">
                         {% endif %}
                         <div>
                             <h6 class="mb-0 small fw-bold">Dr. {{ user.first_name }} {{ user.last_name }}</h6>

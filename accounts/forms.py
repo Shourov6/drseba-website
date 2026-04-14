@@ -267,3 +267,115 @@ class PasswordChangeForm(forms.Form):
                 raise forms.ValidationError("New passwords do not match.")
         
         return cleaned_data
+
+
+class EmployeeCreationForm(forms.ModelForm):
+    """Admin form for creating employee accounts"""
+    
+    password = forms.CharField(
+        required=True,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Set Password for Employee'
+        }),
+        help_text='The password the employee will use to log in'
+    )
+    confirm_password = forms.CharField(
+        required=True,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm Password'
+        })
+    )
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'phone']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+8801XXXXXXXXX'}),
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+        email = cleaned_data.get('email')
+        
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        
+        if password and confirm_password:
+            if password != confirm_password:
+                raise forms.ValidationError("Passwords do not match.")
+            if len(password) < 4:
+                raise forms.ValidationError("Password must be at least 4 characters long.")
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = 'employee'
+        user.username = self.cleaned_data['email'].split('@')[0]  # Use email prefix as username
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user
+
+
+class DoctorCreationForm(forms.ModelForm):
+    """Admin form for creating doctor accounts"""
+    
+    password = forms.CharField(
+        required=True,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Set Password for Doctor'
+        }),
+        help_text='The password the doctor will use to log in'
+    )
+    confirm_password = forms.CharField(
+        required=True,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm Password'
+        })
+    )
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'phone']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+8801XXXXXXXXX'}),
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+        email = cleaned_data.get('email')
+        
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        
+        if password and confirm_password:
+            if password != confirm_password:
+                raise forms.ValidationError("Passwords do not match.")
+            if len(password) < 4:
+                raise forms.ValidationError("Password must be at least 4 characters long.")
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = 'doctor'
+        user.username = self.cleaned_data['email'].split('@')[0]  # Use email prefix as username
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user

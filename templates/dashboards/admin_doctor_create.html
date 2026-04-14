@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+
+{% block title %}Add New Doctor - DrSeba.com{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="background-color: #f8f9fa; min-height: 100vh;">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2 d-none d-md-block" style="background-color: #f8f9fa; border-right: 1px solid #e9ecef;">
+            <div class="p-3">
+                <div class="mb-4 pb-3 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary rounded d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-weight: bold; color: white;">DS</div>
+                        <div>
+                            <h6 class="mb-0 fw-bold">DrSeba.com</h6>
+                            <small class="text-muted">Admin Panel</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 pb-3 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
+                            <span class="fw-bold text-primary">A</span>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 small fw-bold">Admin User</h6>
+                            <small class="text-muted">Admin</small>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="nav flex-column gap-1">
+                    <a class="nav-link px-3 py-2 rounded text-dark" href="{% url 'dashboard:admin_dashboard' %}">
+                        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link px-3 py-2 rounded text-dark" href="{% url 'dashboard:admin_employees' %}">
+                        <i class="bi bi-people me-2"></i>Employees
+                    </a>
+                    <a class="nav-link active px-3 py-2 rounded" href="{% url 'dashboard:admin_doctors' %}" style="background-color: #0A74DA; color: white;">
+                        <i class="bi bi-heart-pulse me-2"></i>Doctors & Hospitals
+                    </a>
+                    <a class="nav-link px-3 py-2 rounded text-dark" href="{% url 'dashboard:admin_appointments' %}">
+                        <i class="bi bi-calendar-check me-2"></i>Appointments
+                    </a>
+                    <a class="nav-link px-3 py-2 rounded text-dark" href="{% url 'dashboard:admin_payments' %}">
+                        <i class="bi bi-credit-card me-2"></i>Payments
+                    </a>
+                    <a class="nav-link px-3 py-2 rounded text-dark" href="{% url 'dashboard:admin_statistics' %}">
+                        <i class="bi bi-bar-chart-line me-2"></i>Analytics & Reports
+                    </a>
+                </nav>
+
+                <div class="mt-5 pt-3 border-top">
+                    <a href="{% url 'accounts:logout' %}" class="nav-link px-3 py-2 text-danger">
+                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9 col-lg-10">
+            <div class="p-4">
+                <div class="mb-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{% url 'dashboard:admin_doctors' %}" class="text-muted text-decoration-none small me-2">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Doctors
+                        </a>
+                        <h4 class="fw-bold mb-1 mt-2">Add New Doctor</h4>
+                        <small class="text-muted">Create doctor profile and schedule by hospital</small>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <form method="post" id="addDoctorForm" action="{% url 'dashboard:create_doctor' %}">
+                            {% csrf_token %}
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="doctorEmail" class="form-label fw-bold">Doctor Email <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="doctorEmail" name="email" placeholder="doctor@example.com" required>
+                                    <small class="text-muted">Doctor's login username (will be their email)</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="firstName" class="form-label fw-bold">First Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="firstName" name="first_name" placeholder="John" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="lastName" class="form-label fw-bold">Last Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="lastName" name="last_name" placeholder="Doe" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="doctorPassword" class="form-label fw-bold">Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="doctorPassword" name="password" placeholder="Set password (min 4 characters)" required>
+                                    <small class="text-muted">Minimum 4 characters</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="doctorPasswordConfirm" class="form-label fw-bold">Confirm Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="doctorPasswordConfirm" name="confirm_password" placeholder="Confirm password" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="bmdcNumber" class="form-label fw-bold">BMDC Registration Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="bmdcNumber" name="bmdc_number" placeholder="BMDC-12345" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="specialty" class="form-label fw-bold">Specialty <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="specialty" name="specialty" required>
+                                        <option value="">Select Specialty</option>
+                                        {% for specialty in specialties %}
+                                            <option value="{{ specialty.id }}">{{ specialty.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="experienceYears" class="form-label fw-bold">Years of Experience</label>
+                                    <input type="number" class="form-control" id="experienceYears" name="experience_years" placeholder="5" min="0">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="qualification" class="form-label fw-bold">Qualification <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="qualification" name="qualification" placeholder="MBBS, MD" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="commissionPercentage" class="form-label fw-bold">Commission Percentage (%) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="commissionPercentage" name="commission_percentage" placeholder="15" min="0" max="100" step="0.01" value="15" required>
+                                    <small class="text-muted">Monthly percentage taken from total consultation fees</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="numHospitals" class="form-label fw-bold">Number of Hospitals <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="numHospitals" name="num_hospitals" min="1" max="10" value="1" required onchange="renderHospitalSchedules()">
+                                </div>
+                            </div>
+
+                            <div class="border-top pt-4 mt-4">
+                                <h6 class="fw-bold mb-3">Doctor Availability Schedule (Weekly Recurring)</h6>
+                                <p class="text-muted small mb-4">Set doctor's working hours by hospital. Use Hour + Minute + AM/PM selectors.</p>
+                                <div id="hospitalSchedulesContainer"></div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <label for="doctorStatus" class="form-label fw-bold">Status <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="doctorStatus" name="status" required>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-flex gap-2">
+                                <a href="{% url 'dashboard:admin_doctors' %}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary fw-bold">Add Doctor</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const DAYS_OF_WEEK = [
+    {index: 0, name: 'Mon', fullName: 'Monday'},
+    {index: 1, name: 'Tue', fullName: 'Tuesday'},
+    {index: 2, name: 'Wed', fullName: 'Wednesday'},
+    {index: 3, name: 'Thu', fullName: 'Thursday'},
+    {index: 4, name: 'Fri', fullName: 'Friday'},
+    {index: 5, name: 'Sat', fullName: 'Saturday'},
+    {index: 6, name: 'Sun', fullName: 'Sunday'}
+];
+
+let customDateCounts = {};
+
+function buildSelectOptions(start, end, padToTwo = false) {
+    let options = '<option value="">--</option>';
+    for (let i = start; i <= end; i++) {
+        const value = padToTwo ? String(i).padStart(2, '0') : String(i);
+        options += `<option value="${value}">${value}</option>`;
+    }
+    return options;
+}
+
+function buildPeriodOptions() {
+    return '<option value="">--</option><option value="AM">AM</option><option value="PM">PM</option>';
+}
+
+function buildTimeSelector(hiddenId, hiddenName, keyPrefix) {
+    const hourId = `${keyPrefix}_hour`;
+    const minuteId = `${keyPrefix}_minute`;
+    const periodId = `${keyPrefix}_period`;
+
+    return `
+        <input type="hidden" id="${hiddenId}" name="${hiddenName}" value="">
+        <div class="d-flex gap-1 align-items-center time-select-wrap">
+            <select class="form-select form-select-sm time-part-select" id="${hourId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+                ${buildSelectOptions(1, 12, true)}
+            </select>
+            <span class="small text-muted">:</span>
+            <select class="form-select form-select-sm time-part-select" id="${minuteId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+                ${buildSelectOptions(0, 59, true)}
+            </select>
+            <select class="form-select form-select-sm time-period-select" id="${periodId}" onchange="syncTimeValue('${hiddenId}', '${hourId}', '${minuteId}', '${periodId}')">
+                ${buildPeriodOptions()}
+            </select>
+        </div>
+    `;
+}
+
+function syncTimeValue(hiddenId, hourId, minuteId, periodId) {
+    const hidden = document.getElementById(hiddenId);
+    const hour = document.getElementById(hourId)?.value || '';
+    const minute = document.getElementById(minuteId)?.value || '';
+    const period = document.getElementById(periodId)?.value || '';
+
+    if (!hidden) {
+        return;
+    }
+
+    hidden.value = (hour && minute && period) ? `${hour}:${minute} ${period}` : '';
+}
+
+function renderHospitalSchedules() {
+    const num = parseInt(document.getElementById('numHospitals').value) || 1;
+    const hospitals = [
+        {% for hospital in hospitals %}
+            {id: '{{ hospital.id }}', name: '{{ hospital.name|escapejs }}'},
+        {% endfor %}
+    ];
+
+    let html = '';
+
+    for (let i = 0; i < num; i++) {
+        html += `
+        <div class="card border-0 shadow-sm mb-4 hospital-schedule-card">
+            <div class="card-header" style="background: linear-gradient(135deg, #114B8A 0%, #0F766E 100%); color: white;">
+                <h6 class="fw-bold mb-0"><i class="bi bi-hospital me-2"></i>Hospital #${i + 1}</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <label class="form-label fw-bold mb-2">Select Hospital <span class="text-danger">*</span></label>
+                    <select class="form-select" name="hospital_${i}" required>
+                        <option value="">Choose Hospital...</option>`;
+
+        hospitals.forEach(h => {
+            html += `<option value="${h.id}">${h.name}</option>`;
+        });
+
+        html += `</select>
+                </div>
+
+                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-calendar-week me-2"></i>Weekly Working Hours</h6>`;
+
+        DAYS_OF_WEEK.forEach(day => {
+            html += `
+            <div class="schedule-day-card p-3 mb-2 border rounded" style="background: #f8f9fa;">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-bold mb-1" title="${day.fullName}">${day.name}</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="day_${i}_${day.index}" name="day_${i}_${day.index}" value="on">
+                            <label class="form-check-label small" for="day_${i}_${day.index}">Working</label>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small fw-bold mb-1">Start</label>
+                        ${buildTimeSelector(`start_time_${i}_${day.index}`, `start_time_${i}_${day.index}`, `start_${i}_${day.index}`)}
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small fw-bold mb-1">End</label>
+                        ${buildTimeSelector(`end_time_${i}_${day.index}`, `end_time_${i}_${day.index}`, `end_${i}_${day.index}`)}
+                    </div>
+                    <div class="col-12 col-md-3 d-grid">
+                        <label class="form-label small fw-bold mb-1">Confirm</label>
+                        <input type="hidden" id="day_done_${i}_${day.index}" name="day_done_${i}_${day.index}" value="0">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="done_btn_${i}_${day.index}" onclick="markDayDone(${i}, ${day.index})">Done</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        html += `
+                <div class="mt-4 pt-4 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-asterisk me-2"></i>Custom Dates (Optional)</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCustomDateForHospital(${i})">
+                            <i class="bi bi-plus-lg me-1"></i>Add Exception
+                        </button>
+                    </div>
+                    <div id="custom-dates-container-${i}"></div>
+                </div>
+            </div>
+        </div>`;
+
+        customDateCounts[i] = 0;
+    }
+
+    document.getElementById('hospitalSchedulesContainer').innerHTML = html;
+}
+
+function addCustomDateForHospital(hospitalIndex) {
+    const today = new Date();
+    const minDate = today.toISOString().split('T')[0];
+    const dateCount = customDateCounts[hospitalIndex]++;
+
+    let html = `
+    <div class="card bg-light border-start border-4 mb-2" id="custom-${hospitalIndex}-${dateCount}" style="border-left-color: #0A74DA;">
+        <div class="card-body p-3">
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control form-control-sm" name="custom_date_${hospitalIndex}_${dateCount}" min="${minDate}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" name="custom_status_${hospitalIndex}_${dateCount}">
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Start Time</label>
+                    ${buildTimeSelector(`custom_start_time_${hospitalIndex}_${dateCount}`, `custom_start_time_${hospitalIndex}_${dateCount}`, `custom_start_${hospitalIndex}_${dateCount}`)}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">End Time</label>
+                    ${buildTimeSelector(`custom_end_time_${hospitalIndex}_${dateCount}`, `custom_end_time_${hospitalIndex}_${dateCount}`, `custom_end_${hospitalIndex}_${dateCount}`)}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removeCustomDate(${hospitalIndex}, ${dateCount})">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    const container = document.getElementById(`custom-dates-container-${hospitalIndex}`);
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removeCustomDate(hospitalIndex, dateIndex) {
+    const element = document.getElementById(`custom-${hospitalIndex}-${dateIndex}`);
+    if (element) {
+        element.remove();
+    }
+}
+
+function markDayDone(hospitalIndex, dayIndex) {
+    const checkbox = document.getElementById(`day_${hospitalIndex}_${dayIndex}`);
+    const start = document.getElementById(`start_time_${hospitalIndex}_${dayIndex}`);
+    const end = document.getElementById(`end_time_${hospitalIndex}_${dayIndex}`);
+    const doneInput = document.getElementById(`day_done_${hospitalIndex}_${dayIndex}`);
+    const btn = document.getElementById(`done_btn_${hospitalIndex}_${dayIndex}`);
+
+    if (!checkbox || !start || !end || !doneInput || !btn) {
+        return;
+    }
+
+    if (!checkbox.checked || !start.value || !end.value) {
+        btn.classList.remove('btn-success', 'text-white');
+        btn.classList.add('btn-outline-success');
+        btn.textContent = 'Done';
+        doneInput.value = '0';
+        alert('Please check Working and set both Start and End times first.');
+        return;
+    }
+
+    const isConfirmed = doneInput.value === '1';
+    if (isConfirmed) {
+        doneInput.value = '0';
+        btn.textContent = 'Done';
+        btn.classList.remove('btn-success', 'text-white');
+        btn.classList.add('btn-outline-success');
+    } else {
+        doneInput.value = '1';
+        btn.textContent = 'Done ✓';
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-success', 'text-white');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', renderHospitalSchedules);
+</script>
+{% endblock %}

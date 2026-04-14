@@ -36,9 +36,16 @@ class Appointment(models.Model):
     ]
     
     # Basic info
-    patient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='appointments')
+    patient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='appointments', null=True, blank=True)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='appointments')
+    
+    # Guest booking information (when patient is None)
+    guest_full_name = models.CharField(max_length=200, blank=True, help_text="Guest patient name")
+    guest_email = models.EmailField(blank=True, help_text="Guest patient email")
+    guest_phone = models.CharField(max_length=20, blank=True, help_text="Guest patient phone")
+    guest_age = models.PositiveIntegerField(null=True, blank=True, help_text="Guest patient age")
+    guest_gender = models.CharField(max_length=20, blank=True, help_text="Guest patient gender")
     
     # Date and time
     date = models.DateField()
@@ -62,6 +69,16 @@ class Appointment(models.Model):
     
     # Online consultation
     meeting_link = models.URLField(blank=True, help_text="Video call link for online consultations")
+    
+    # Distribution/Assignment to employee
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='distributed_appointments',
+        help_text="Employee assigned to handle this appointment"
+    )
     
     # Notes
     doctor_notes = models.TextField(blank=True)

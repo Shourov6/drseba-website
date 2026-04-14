@@ -67,19 +67,21 @@
         <div class="col-md-9 col-lg-10">
             <div class="p-4">
                 <!-- Header -->
-                <h4 class="fw-bold mb-4">Appointment Management</h4>
+                <div class="mb-4 dashboard-hero-card d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0 dashboard-hero-title">Appointment Management</h4>
+                </div>
                 
                 <!-- Tabs -->
                 <ul class="nav nav-pills mb-4" style="gap: 10px;">
                     <li class="nav-item">
-                        <a class="nav-link fw-bold" href="#" style="background-color: #0A74DA; color: white;">
+                        <button type="button" class="nav-link fw-bold appointment-tab-btn active" data-tab="distributed">
                             Distributed Appointment
-                        </a>
+                        </button>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link fw-bold text-muted" href="#" style="background-color: #f0f0f0; border: none;">
+                        <button type="button" class="nav-link fw-bold appointment-tab-btn" data-tab="non_distributed">
                             Non-Distributed Appointment
-                        </a>
+                        </button>
                     </li>
                 </ul>
                 
@@ -111,7 +113,7 @@
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 fs-sm">
                                 <thead class="table-light">
-                                    <tr>
+                                    <tr id="appointmentsTableHeader">
                                         <th>Patient Name</th>
                                         <th>Doctor Name</th>
                                         <th>Date</th>
@@ -124,52 +126,8 @@
                                         <th>Action</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for appt in recent_appointments %}
-                                    <tr>
-                                        <td><a href="#" class="text-primary text-decoration-none fw-bold">{{ appt.patient.get_full_name }}</a></td>
-                                        <td>Dr. {{ appt.doctor.get_full_name }}</td>
-                                        <td class="small">{{ appt.date|date:"Y-m-d" }}</td>
-                                        <td class="small">{{ appt.time_slot|default:"10:00 AM" }}</td>
-                                        <td class="small">Consultation</td>
-                                        <td class="small">৳{{ appt.total_amount }}</td>
-                                        <td>
-                                            {% if appt.status == 'confirmed' %}
-                                            <span class="badge bg-success">Confirmed</span>
-                                            {% elif appt.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ appt.status|title }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-success">Confirmed</span>
-                                        </td>
-                                        <td>
-                                            {% if appt.status == 'confirmed' %}
-                                            <span class="badge bg-success">Confirmed</span>
-                                            {% elif appt.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ appt.status|title }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#editAppointmentModal" onclick="loadAppointmentData({{ appt.id }}, '{{ appt.patient.get_full_name }}', {{ appt.patient.age|default:'0' }}, '{{ appt.patient.gender|default:'' }}', '{{ appt.patient.phone }}', '{{ appt.patient.email }}', 'Dr. {{ appt.doctor.get_full_name }}', '{{ appt.doctor.get_primary_specialty }}', '{{ appt.doctor.qualifications }}', '{{ appt.doctor.user.phone }}', '{{ appt.date|date:'Y-m-d' }}', '{{ appt.time_slot }}', '{{ appt.consultation_type }}', '{{ appt.service_fee }}', '{{ appt.patient_notes }}', '{{ appt.status }}')">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteAppointment({{ appt.id }})">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="10" class="text-center py-4 text-muted">No appointments found</td>
-                                    </tr>
-                                    {% endfor %}
+                                <tbody id="appointmentsTableBody">
+                                    <!-- Table rows will be populated by JavaScript -->
                                 </tbody>
                             </table>
                         </div>
@@ -228,6 +186,32 @@
 
     .suggestion-item:last-child {
         border-bottom: none;
+    }
+
+    /* Appointment Tab Button Styling */
+    .appointment-tab-btn {
+        padding: 0.5rem 1.5rem !important;
+        border-radius: 4px !important;
+        border: 2px solid transparent !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+    }
+
+    .appointment-tab-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(10, 116, 218, 0.15);
+    }
+
+    .appointment-tab-btn.active {
+        background-color: #0A74DA !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(10, 116, 218, 0.3);
+    }
+
+    .appointment-tab-btn:not(.active) {
+        background-color: #f0f0f0 !important;
+        color: #6B7280 !important;
     }
 </style>
 
@@ -551,6 +535,223 @@ document.addEventListener('click', function(event) {
     if (event.target !== appointmentInput && !appointmentInput.contains(event.target)) {
         appointmentSuggestions.style.display = 'none';
     }
+});
+
+// ===== TAB SWITCHING AND APPOINTMENT FILTERING =====
+// Store appointment data from template
+const appointmentsData = {
+    distributed: {{ distributed_appointments_json|safe }},
+    non_distributed: {{ non_distributed_appointments_json|safe }},
+};
+
+const employeesData = {{ employees_json|safe }};
+const selectedEmployees = {};
+
+let currentTab = 'distributed';
+
+// Tab button click handlers
+document.querySelectorAll('.appointment-tab-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const tabName = this.getAttribute('data-tab');
+        
+        // Update active tab
+        currentTab = tabName;
+        
+        // Update button styles
+        document.querySelectorAll('.appointment-tab-btn').forEach(b => {
+            if (b.getAttribute('data-tab') === tabName) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
+        
+        // Render table
+        renderAppointmentsTable();
+    });
+});
+
+// Function to render appointments table based on current tab
+function renderAppointmentsTable() {
+    const tableBody = document.getElementById('appointmentsTableBody');
+    const appointments = appointmentsData[currentTab];
+    const tableHeader = document.getElementById('appointmentsTableHeader');
+
+    if (tableHeader) {
+        if (currentTab === 'non_distributed') {
+            tableHeader.innerHTML = `
+                <th>Patient Name</th>
+                <th>Doctor Name</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Service Charge</th>
+                <th>Select Employee</th>
+                <th>Action</th>
+            `;
+        } else {
+            tableHeader.innerHTML = `
+                <th>Patient Name</th>
+                <th>Doctor Name</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Service Charge</th>
+                <th>Manager Status</th>
+                <th>Doctor Status</th>
+                <th>Final Status</th>
+                <th>Action</th>
+            `;
+        }
+    }
+    
+    if (!appointments || appointments.length === 0) {
+        tableBody.innerHTML = currentTab === 'non_distributed'
+            ? '<tr><td colspan="8" class="text-center py-4 text-muted">No appointments found</td></tr>'
+            : '<tr><td colspan="10" class="text-center py-4 text-muted">No appointments found</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    appointments.forEach(appt => {
+        // Get patient name from either patient or guest info
+        const patientName = appt.patient ? `${appt.patient.first_name} ${appt.patient.last_name}` : appt.guest_full_name || 'Guest';
+        const patientAge = appt.patient ? (appt.patient.patient_profile?.age || '0') : appt.guest_age || '0';
+        const patientGender = appt.patient ? (appt.patient.patient_profile?.gender || '') : appt.guest_gender || '';
+        const patientPhone = appt.patient ? appt.patient.phone : appt.guest_phone;
+        const patientEmail = appt.patient ? appt.patient.email : appt.guest_email;
+        const assignedEmployee = appt.assigned_to ? appt.assigned_to.name : '';
+        const selectedEmployeeId = selectedEmployees[appt.id]?.id || (appt.assigned_to ? appt.assigned_to.id : '');
+        const employeeSelectorDisabled = employeesData.length === 0 ? 'disabled' : '';
+        const assignButtonDisabled = (employeesData.length === 0 || !selectedEmployeeId) ? 'disabled' : '';
+        const employeeOptions = `
+            <option value="">Select Employee</option>
+            ${employeesData.map(employee => `
+                <option value="${employee.id}" ${String(selectedEmployeeId) === String(employee.id) ? 'selected' : ''}>
+                    ${employee.name}${employee.designation ? ` - ${employee.designation}` : ''}
+                </option>
+            `).join('')}
+        `;
+        
+        html += `
+            <tr data-appointment-id="${appt.id}">
+                <td><a href="#" class="text-primary text-decoration-none fw-bold">${patientName}</a></td>
+                <td>Dr. ${appt.doctor.user.first_name} ${appt.doctor.user.last_name}</td>
+                <td class="small">${appt.date}</td>
+                <td class="small">${appt.time_slot}</td>
+                <td class="small">${appt.consultation_type === 'online' ? 'Online' : 'In-Person'}</td>
+                <td class="small">৳${appt.total_amount}</td>
+                ${currentTab === 'non_distributed' ? `
+                    <td>
+                        <select class="form-select form-select-sm" ${employeeSelectorDisabled} onchange="selectEmployeeForAppointment(${appt.id}, this.value)">
+                            ${employeeOptions}
+                        </select>
+                        <div class="mt-2 d-grid">
+                            <button type="button" class="btn btn-primary btn-sm assign-employee-btn" ${assignButtonDisabled} onclick="assignEmployeeToAppointment(${appt.id})">
+                                Assign
+                            </button>
+                        </div>
+                    </td>
+                ` : `
+                    <td>
+                        <div>
+                            <span class="badge ${appt.status === 'confirmed' ? 'bg-success' : appt.status === 'pending' ? 'bg-warning' : 'bg-secondary'}">
+                                ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                            </span>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">Confirmed</span></td>
+                    <td>
+                        <span class="badge ${appt.status === 'confirmed' ? 'bg-success' : appt.status === 'pending' ? 'bg-warning' : 'bg-secondary'}">
+                            ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                        </span>
+                    </td>
+                `}
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#editAppointmentModal" onclick="loadAppointmentData(${appt.id}, '${patientName}', ${patientAge}, '${patientGender}', '${patientPhone}', '${patientEmail}', 'Dr. ${appt.doctor.user.first_name} ${appt.doctor.user.last_name}', '${appt.doctor.specialties && appt.doctor.specialties[0] ? appt.doctor.specialties[0].name : ''}', '${appt.doctor.qualifications}', '${appt.doctor.user.phone}', '${appt.date}', '${appt.time_slot}', '${appt.consultation_type}', '${appt.service_fee}', '${appt.patient_notes}', '${appt.status}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteAppointment(${appt.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableBody.innerHTML = html;
+}
+
+function selectEmployeeForAppointment(appointmentId, employeeId) {
+    const row = document.querySelector(`tr[data-appointment-id="${appointmentId}"]`);
+    const assignButton = row ? row.querySelector('.assign-employee-btn') : null;
+
+    if (!employeeId) {
+        delete selectedEmployees[appointmentId];
+        if (assignButton) {
+            assignButton.disabled = true;
+        }
+        return;
+    }
+
+    const selectedEmployee = employeesData.find(emp => String(emp.id) === String(employeeId));
+    if (!selectedEmployee) {
+        delete selectedEmployees[appointmentId];
+        if (assignButton) {
+            assignButton.disabled = true;
+        }
+        return;
+    }
+
+    selectedEmployees[appointmentId] = {
+        id: selectedEmployee.id,
+        name: selectedEmployee.name,
+        designation: selectedEmployee.designation || '',
+    };
+
+    if (assignButton) {
+        assignButton.disabled = false;
+    }
+}
+
+function assignEmployeeToAppointment(appointmentId) {
+    const selectedEmployee = selectedEmployees[appointmentId];
+    if (!selectedEmployee) {
+        alert('Please select an employee first.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('employee_id', selectedEmployee.id);
+
+    fetch(`/dashboard/admin/appointments/${appointmentId}/assign/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Employee assigned successfully');
+            window.location.reload();
+        } else {
+            alert(data.message || 'Error assigning employee');
+        }
+    })
+    .catch(error => {
+        console.error('Error assigning employee:', error);
+        alert('Error assigning employee');
+    });
+}
+
+// Initial render on page load
+document.addEventListener('DOMContentLoaded', function() {
+    renderAppointmentsTable();
 });
 </script>
 

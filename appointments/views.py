@@ -7,21 +7,155 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from urllib.parse import quote
+from decimal import Decimal
 import json
 from .models import Appointment, CartItem, AppointmentHistory
-from doctors.models import Doctor, Hospital, DoctorAvailability
-from payments.models import Invoice
+from doctors.models import Doctor, DoctorAvailability, DoctorWeeklySchedule, Hospital
+from payments.models import Invoice, DoctorEarning
+
+
+def _parse_slot_window(slot_value):
+    """Parse a time-slot key like '09:00-11:00' into start/end time objects."""
+    start_str, end_str = slot_value.split('-')
+    return (
+        datetime.strptime(start_str, '%H:%M').time(),
+        datetime.strptime(end_str, '%H:%M').time(),
+    )
+
+
+def _format_time_slot_12h(slot_value):
+    """Convert HH:MM-HH:MM to h:MM AM/PM - h:MM AM/PM for display."""
+    try:
+        start_str, end_str = slot_value.split('-')
+        start_time = datetime.strptime(start_str, '%H:%M')
+        end_time = datetime.strptime(end_str, '%H:%M')
+        return f"{start_time.strftime('%I:%M %p').lstrip('0')} - {end_time.strftime('%I:%M %p').lstrip('0')}"
+    except Exception:
+        return slot_value
+
+
+def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
+    """Generate future availability rows from recurring weekly schedules."""
+    weekly_schedules = list(
+        DoctorWeeklySchedule.objects.filter(
+            doctor=doctor,
+            is_active=True,
+        ).select_related('hospital')
+    )
+    if not weekly_schedules:
+        return
+
+    slot_windows = []
+    for slot_value, _ in DoctorAvailability.TIME_SLOTS:
+        slot_start, slot_end = _parse_slot_window(slot_value)
+        slot_windows.append((slot_value, slot_start, slot_end))
+
+    exceptions = DoctorAvailability.objects.filter(
+        doctor=doctor,
+        date__gte=start_date,
+        date__lte=end_date,
+        is_exception=True,
+    )
+    exception_map = {(ex.hospital_id, ex.date): ex for ex in exceptions}
+
+    total_days = (end_date - start_date).days + 1
+    for offset in range(total_days):
+        current_date = start_date + timedelta(days=offset)
+        weekday = current_date.weekday()
+
+        for schedule in weekly_schedules:
+            if schedule.day_of_week != weekday:
+                continue
+
+            exception = exception_map.get((schedule.hospital_id, current_date))
+            if exception:
+                if not exception.is_available:
+                    DoctorAvailability.objects.filter(
+                        doctor=doctor,
+                        hospital_id=schedule.hospital_id,
+                        date=current_date,
+                        is_exception=False,
+                        is_booked=False,
+                    ).update(is_available=False)
+                continue
+
+            for slot_value, slot_start, slot_end in slot_windows:
+                # Keep slots that overlap the doctor's configured window.
+                if slot_end <= schedule.start_time or slot_start >= schedule.end_time:
+                    continue
+
+                DoctorAvailability.objects.get_or_create(
+                    doctor=doctor,
+                    hospital_id=schedule.hospital_id,
+                    date=current_date,
+                    time_slot=slot_value,
+                    defaults={
+                        'is_available': True,
+                        'is_booked': False,
+                        'is_exception': False,
+                    },
+                )
+
+
+def _sync_doctor_earning(appointment):
+    """Create or refresh the doctor's earning entry for an appointment."""
+    consultation_amount = appointment.consultation_fee or Decimal('0.00')
+    if consultation_amount <= Decimal('0.00'):
+        if appointment.consultation_type == 'online':
+            consultation_amount = appointment.doctor.consultation_fee_online or Decimal('0.00')
+        else:
+            consultation_amount = appointment.doctor.consultation_fee_in_person or Decimal('0.00')
+
+    earning_defaults = {
+        'total_amount': consultation_amount,
+        'commission_rate': appointment.doctor.commission_rate,
+        'month': timezone.now().month,
+        'year': timezone.now().year,
+    }
+
+    doctor_earning, created = DoctorEarning.objects.get_or_create(
+        doctor=appointment.doctor,
+        appointment=appointment,
+        defaults=earning_defaults,
+    )
+
+    if not created:
+        fields_to_update = []
+        for field_name, field_value in earning_defaults.items():
+            if getattr(doctor_earning, field_name) != field_value:
+                setattr(doctor_earning, field_name, field_value)
+                fields_to_update.append(field_name)
+
+        if fields_to_update:
+            doctor_earning.calculate_earnings()
+            fields_to_update.extend(['platform_commission', 'doctor_amount'])
+            doctor_earning.save(update_fields=list(dict.fromkeys(fields_to_update)))
+        return doctor_earning
+
+    doctor_earning.calculate_earnings()
+    doctor_earning.save()
+    return doctor_earning
 
 
 def book_appointment(request, doctor_id):
     """Multi-step appointment booking - NO LOGIN REQUIRED"""
     doctor = get_object_or_404(Doctor, pk=doctor_id, is_verified=True, is_active=True)
     step = request.GET.get('step', '1')
+    booking = request.session.get('booking', {})
+
+    # Prevent stale booking session data from another doctor.
+    if booking.get('doctor_id') and str(booking.get('doctor_id')) != str(doctor_id):
+        booking = {}
+        request.session['booking'] = booking
     
     # Get next 21 days of availability
     start_date = date.today()
     end_date = start_date + timedelta(days=21)
+
+    # Weekly schedules are stored separately; materialize upcoming dates for booking.
+    _sync_future_availabilities_from_weekly(doctor, start_date, end_date)
     
     availabilities = DoctorAvailability.objects.filter(
         doctor=doctor,
@@ -31,7 +165,16 @@ def book_appointment(request, doctor_id):
         is_booked=False
     ).select_related('hospital').order_by('date', 'time_slot')
     
-    hospitals = doctor.hospitals.filter(is_active=True)
+    hospitals = Hospital.objects.filter(
+        doctors__doctor=doctor,
+        doctors__is_active=True,
+        is_active=True,
+    ).distinct().order_by('name')
+
+    hospital_slot_counts = {
+        hospital.id: availabilities.filter(hospital_id=hospital.id).count()
+        for hospital in hospitals
+    }
     
     # Serialize availabilities for JavaScript
     availabilities_json = json.dumps([
@@ -51,7 +194,102 @@ def book_appointment(request, doctor_id):
         'availabilities': availabilities,
         'availabilities_json': availabilities_json,
         'hospitals': hospitals,
+        'hospital_slot_counts': hospital_slot_counts,
+        'booking': booking,
+        'service_charge': 50,
     }
+
+    def _finalize_booking(create_guest_record=False):
+        """Create appointment record from session booking and lock slot atomically."""
+        current_booking = request.session.get('booking', {})
+        availability_id = current_booking.get('availability_id')
+        if not availability_id:
+            raise ValueError('Please select an appointment slot first.')
+
+        with transaction.atomic():
+            try:
+                availability = DoctorAvailability.objects.select_for_update().get(
+                    id=availability_id,
+                    doctor=doctor,
+                    is_available=True,
+                    is_booked=False,
+                )
+            except DoctorAvailability.DoesNotExist as exc:
+                raise ValueError('Selected slot is no longer available. Please choose another slot.') from exc
+
+            appointment_payload = {
+                'doctor': doctor,
+                'hospital': availability.hospital,
+                'date': availability.date,
+                'time_slot': availability.time_slot,
+                'consultation_type': current_booking.get('consultation_type') or 'in_person',
+                'payment_method': (current_booking.get('payment_method') or '').lower(),
+                'status': 'pending',
+                'symptoms': current_booking.get('symptoms', ''),
+            }
+
+            if appointment_payload['consultation_type'] == 'online':
+                consultation_fee = doctor.consultation_fee_online or Decimal('0.00')
+            else:
+                consultation_fee = doctor.consultation_fee_in_person or Decimal('0.00')
+
+            service_fee = Decimal('50.00')
+            appointment_payload['consultation_fee'] = consultation_fee
+            appointment_payload['service_fee'] = service_fee
+            appointment_payload['total_amount'] = consultation_fee + service_fee
+
+            can_link_patient = request.user.is_authenticated and request.user.is_patient() and not create_guest_record
+            if can_link_patient:
+                appointment_payload['patient'] = request.user
+            else:
+                appointment_payload.update({
+                    'patient': None,
+                    'guest_full_name': current_booking.get('full_name', ''),
+                    'guest_email': current_booking.get('email', ''),
+                    'guest_phone': current_booking.get('phone', ''),
+                    'guest_age': current_booking.get('age') or None,
+                    'guest_gender': current_booking.get('gender', ''),
+                })
+
+            appointment = Appointment.objects.create(**appointment_payload)
+
+            availability.is_booked = True
+            availability.save(update_fields=['is_booked'])
+
+        request.session['guest_appointment'] = {
+            'doctor_name': doctor.user.get_full_name(),
+            'full_name': current_booking.get('full_name'),
+            'email': current_booking.get('email'),
+            'phone': current_booking.get('phone'),
+            'age': current_booking.get('age'),
+            'gender': current_booking.get('gender'),
+            'appointment_id': appointment.id,
+            'availability': str(availability),
+            'payment_method': current_booking.get('payment_method'),
+        }
+        request.session.pop('booking', None)
+        return appointment
+
+    selected_availability = None
+    selected_hospital = None
+    if booking.get('availability_id'):
+        selected_availability = DoctorAvailability.objects.filter(
+            id=booking.get('availability_id'),
+            doctor=doctor
+        ).select_related('hospital').first()
+        if selected_availability:
+            selected_hospital = selected_availability.hospital
+            context['selected_availability'] = selected_availability
+
+    if not selected_hospital and booking.get('hospital_id'):
+        selected_hospital = Hospital.objects.filter(id=booking.get('hospital_id')).first()
+
+    if not selected_hospital:
+        selected_hospital = hospitals.first()
+
+    consultation_type = booking.get('consultation_type')
+    context['consultation_type_label'] = 'Online Consultation' if consultation_type == 'online' else 'In-Person Consultation'
+    context['selected_hospital'] = selected_hospital
     
     # Handle form submissions
     if request.method == 'POST':
@@ -67,11 +305,26 @@ def book_appointment(request, doctor_id):
             if not availability_id:
                 messages.error(request, 'Please select an appointment slot first.')
                 return redirect(f'/appointments/book/{doctor_id}/?step=1')
+
+            try:
+                selected_availability = DoctorAvailability.objects.select_related('hospital').get(
+                    id=availability_id,
+                    doctor=doctor,
+                    is_available=True,
+                    is_booked=False
+                )
+            except DoctorAvailability.DoesNotExist:
+                messages.error(request, 'Selected slot is no longer available. Please choose another slot.')
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
+
+            if hospital_id and str(selected_availability.hospital_id) != str(hospital_id):
+                messages.error(request, 'Selected hospital does not match selected slot. Please select again.')
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
             
             request.session['booking'] = {
                 'doctor_id': doctor_id,
                 'availability_id': availability_id,
-                'hospital_id': hospital_id,
+                'hospital_id': selected_availability.hospital_id,
                 'consultation_type': consultation_type,
             }
             
@@ -107,9 +360,18 @@ def book_appointment(request, doctor_id):
             booking['payment_method'] = payment_method
             request.session['booking'] = booking
             
-            # If user is logged in, create appointment directly
+            # If user is logged in as patient, finalize appointment now.
             if request.user.is_authenticated and request.user.is_patient():
-                return redirect(f'/appointments/book/{doctor_id}/?step=5')
+                try:
+                    appointment = _finalize_booking(create_guest_record=False)
+                    messages.success(request, 'Appointment booked successfully!')
+                    return redirect('appointments:confirmation', appointment_id=appointment.id)
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                    return redirect(f'/appointments/book/{doctor_id}/?step=1')
+                except Exception as exc:
+                    messages.error(request, f'Error booking appointment: {str(exc)}')
+                    return redirect(f'/appointments/book/{doctor_id}/?step=1')
             else:
                 # For guest users, go to login/signup step
                 return redirect(f'/appointments/book/{doctor_id}/?step=4')
@@ -120,68 +382,38 @@ def book_appointment(request, doctor_id):
             booking = request.session.get('booking', {})
             booking['auth_choice'] = auth_choice
             request.session['booking'] = booking
+            next_url = quote(f'/appointments/book/{doctor_id}/?step=5')
             
             if auth_choice == 'guest':
-                return redirect(f'/appointments/book/{doctor_id}/?step=5')
+                try:
+                    appointment = _finalize_booking(create_guest_record=True)
+                    messages.success(request, 'Appointment booked successfully!')
+                    return redirect(f'/appointments/confirmation-guest/?appointment_id={appointment.id}')
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                    return redirect(f'/appointments/book/{doctor_id}/?step=1')
+                except Exception as exc:
+                    messages.error(request, f'Error booking appointment: {str(exc)}')
+                    return redirect(f'/appointments/book/{doctor_id}/?step=1')
             elif auth_choice == 'login':
-                return redirect(f'/accounts/login/?next=/appointments/book/{doctor_id}/?step=5')
+                return redirect(f'/accounts/login/?next={next_url}')
             elif auth_choice == 'signup':
-                return redirect(f'/accounts/register/?next=/appointments/book/{doctor_id}/?step=5')
+                return redirect(f'/accounts/register/?next={next_url}')
         
         elif step == '5':
-            # Create appointment
-            booking = request.session.get('booking', {})
-            
+            # Legacy POST fallback: finalize if client submits step=5.
             try:
-                availability = DoctorAvailability.objects.get(
-                    id=booking.get('availability_id')
-                )
-                doctor_obj = Doctor.objects.get(pk=doctor_id)
-                
-                # Handle guest vs registered user
-                if request.user.is_authenticated:
-                    patient = request.user
-                else:
-                    # For guest users, we can create a temporary guest record or save to session
-                    patient = None
-                
-                # Create appointment
-                if patient:
-                    appointment = Appointment.objects.create(
-                        patient=patient,
-                        doctor=doctor_obj,
-                        availability=availability,
-                        consultation_type=booking.get('consultation_type'),
-                        payment_method=booking.get('payment_method'),
-                        status='pending',
-                        notes=booking.get('symptoms', ''),
-                    )
-                else:
-                    # For guest users, store in session for confirmation
-                    request.session['guest_appointment'] = {
-                        'doctor_name': doctor_obj.user.get_full_name(),
-                        'full_name': booking.get('full_name'),
-                        'email': booking.get('email'),
-                        'phone': booking.get('phone'),
-                        'availability': str(availability),
-                        'payment_method': booking.get('payment_method'),
-                    }
-                    appointment = None
-                
-                # Mark availability as booked
-                availability.is_booked = True
-                availability.save()
-                
-                # Clear session
-                del request.session['booking']
-                
-                if appointment:
-                    messages.success(request, 'Appointment booked successfully!')
+                create_guest_record = not (request.user.is_authenticated and request.user.is_patient())
+                appointment = _finalize_booking(create_guest_record=create_guest_record)
+                messages.success(request, 'Appointment booked successfully!')
+                if request.user.is_authenticated and request.user.is_patient():
                     return redirect('appointments:confirmation', appointment_id=appointment.id)
-                else:
-                    return redirect(f'/appointments/confirmation-guest/?doctor_id={doctor_id}')
-            except Exception as e:
-                messages.error(request, f'Error booking appointment: {str(e)}')
+                return redirect(f'/appointments/confirmation-guest/?appointment_id={appointment.id}')
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
+            except Exception as exc:
+                messages.error(request, f'Error booking appointment: {str(exc)}')
                 return redirect(f'/appointments/book/{doctor_id}/?step=1')
     
     if step == '2':
@@ -201,6 +433,9 @@ def book_appointment(request, doctor_id):
     
     elif step == '3':
         booking = request.session.get('booking', {})
+        if not booking.get('availability_id'):
+            messages.warning(request, 'Please select an appointment slot first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=1')
         if not booking.get('phone'):
             messages.warning(request, 'Please fill in patient information first.')
             return redirect(f'/appointments/book/{doctor_id}/?step=2')
@@ -208,9 +443,52 @@ def book_appointment(request, doctor_id):
     elif step == '4':
         # Login/Signup/Guest choice step
         booking = request.session.get('booking', {})
+        if not booking.get('availability_id'):
+            messages.warning(request, 'Please select an appointment slot first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=1')
+        if not booking.get('phone'):
+            messages.warning(request, 'Please fill in patient information first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=2')
         if not booking.get('payment_method'):
             messages.warning(request, 'Please select a payment method first.')
             return redirect(f'/appointments/book/{doctor_id}/?step=3')
+
+    elif step == '5':
+        booking = request.session.get('booking', {})
+        if not booking.get('availability_id'):
+            messages.warning(request, 'Please select an appointment slot first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=1')
+        if not booking.get('phone'):
+            messages.warning(request, 'Please fill in patient information first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=2')
+        if not booking.get('payment_method'):
+            messages.warning(request, 'Please select a payment method first.')
+            return redirect(f'/appointments/book/{doctor_id}/?step=3')
+
+        # If user returned from login/signup, finalize automatically on GET.
+        if request.user.is_authenticated and request.user.is_patient():
+            try:
+                appointment = _finalize_booking(create_guest_record=False)
+                messages.success(request, 'Appointment booked successfully!')
+                return redirect('appointments:confirmation', appointment_id=appointment.id)
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
+            except Exception as exc:
+                messages.error(request, f'Error booking appointment: {str(exc)}')
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
+
+        if booking.get('auth_choice') == 'guest':
+            try:
+                appointment = _finalize_booking(create_guest_record=True)
+                messages.success(request, 'Appointment booked successfully!')
+                return redirect(f'/appointments/confirmation-guest/?appointment_id={appointment.id}')
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
+            except Exception as exc:
+                messages.error(request, f'Error booking appointment: {str(exc)}')
+                return redirect(f'/appointments/book/{doctor_id}/?step=1')
     
     return render(request, 'appointments/book_appointment.html', context)
 
@@ -339,7 +617,6 @@ def clear_cart(request):
 
 
 @login_required
-
 @login_required
 def checkout(request):
     """Checkout cart items"""
@@ -471,9 +748,42 @@ def appointment_detail(request, appointment_id):
     except:
         invoice = None
     
+    consultation_fee_display = appointment.consultation_fee or Decimal('0.00')
+    service_fee_display = appointment.service_fee or Decimal('0.00')
+    total_amount_display = appointment.total_amount or Decimal('0.00')
+
+    if appointment.consultation_type == 'online':
+        expected_consultation_fee = appointment.doctor.consultation_fee_online or Decimal('0.00')
+    else:
+        expected_consultation_fee = appointment.doctor.consultation_fee_in_person or Decimal('0.00')
+
+    fields_to_update = []
+    if consultation_fee_display <= Decimal('0.00'):
+        consultation_fee_display = expected_consultation_fee
+        appointment.consultation_fee = consultation_fee_display
+        fields_to_update.append('consultation_fee')
+
+    if service_fee_display <= Decimal('0.00'):
+        service_fee_display = Decimal('50.00')
+        appointment.service_fee = service_fee_display
+        fields_to_update.append('service_fee')
+
+    recalculated_total = consultation_fee_display + service_fee_display
+    if total_amount_display <= Decimal('0.00'):
+        total_amount_display = recalculated_total
+        appointment.total_amount = total_amount_display
+        fields_to_update.append('total_amount')
+
+    if fields_to_update:
+        appointment.save(update_fields=fields_to_update + ['updated_at'])
+
     context = {
         'appointment': appointment,
         'invoice': invoice,
+        'time_slot_display': _format_time_slot_12h(appointment.time_slot),
+        'consultation_fee_display': consultation_fee_display,
+        'service_fee_display': service_fee_display,
+        'total_amount_display': total_amount_display,
     }
     
     return render(request, 'appointments/appointment_detail.html', context)
@@ -652,20 +962,25 @@ def doctor_confirm(request, appointment_id):
     if request.user != appointment.doctor.user:
         messages.error(request, 'You can only confirm your own appointments.')
         return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('appointments:doctor_appointments')
     
-    old_status = appointment.status
-    appointment.status = 'confirmed'
-    appointment.confirmed_at = timezone.now()
-    appointment.save()
-    
-    # Log history
-    AppointmentHistory.objects.create(
-        appointment=appointment,
-        status_from=old_status,
-        status_to='confirmed',
-        changed_by=request.user,
-        notes='Confirmed by doctor'
-    )
+    with transaction.atomic():
+        old_status = appointment.status
+        appointment.status = 'confirmed'
+        appointment.confirmed_at = timezone.now()
+        appointment.save()
+
+        # Log history
+        AppointmentHistory.objects.create(
+            appointment=appointment,
+            status_from=old_status,
+            status_to='confirmed',
+            changed_by=request.user,
+            notes='Confirmed by doctor'
+        )
     
     messages.success(request, 'Appointment confirmed!')
     return redirect('appointments:doctor_appointments')
@@ -679,20 +994,31 @@ def doctor_complete(request, appointment_id):
     if request.user != appointment.doctor.user:
         messages.error(request, 'You can only complete your own appointments.')
         return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('appointments:doctor_appointments')
+
+    if appointment.status == 'completed':
+        messages.info(request, 'This appointment is already completed.')
+        return redirect('appointments:doctor_appointments')
     
-    old_status = appointment.status
-    appointment.status = 'completed'
-    appointment.completed_at = timezone.now()
-    appointment.save()
-    
-    # Log history
-    AppointmentHistory.objects.create(
-        appointment=appointment,
-        status_from=old_status,
-        status_to='completed',
-        changed_by=request.user,
-        notes='Completed by doctor'
-    )
+    with transaction.atomic():
+        old_status = appointment.status
+        appointment.status = 'completed'
+        appointment.completed_at = timezone.now()
+        appointment.save()
+
+        _sync_doctor_earning(appointment)
+
+        # Log history
+        AppointmentHistory.objects.create(
+            appointment=appointment,
+            status_from=old_status,
+            status_to='completed',
+            changed_by=request.user,
+            notes='Completed by doctor'
+        )
     
     messages.success(request, 'Appointment marked as completed!')
     return redirect('appointments:doctor_appointments')

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ doctor.get_full_name }} - DrSeba.com{% endblock %}
 
@@ -16,9 +17,7 @@
                             {% if doctor.profile_picture %}
                             <img src="{{ doctor.profile_picture.url }}" alt="{{ doctor.user.get_full_name }}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;">
                             {% else %}
-                            <div class="bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border-radius: 8px;">
-                                <i class="bi bi-person fs-1 text-primary"></i>
-                            </div>
+                            <img src="{% static 'img/default-user.png' %}" alt="No Photo" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;">
                             {% endif %}
                         </div>
 

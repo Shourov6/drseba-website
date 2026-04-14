@@ -481,6 +481,19 @@ document.addEventListener('click', (event) => {
                             <input type="date" class="form-control" name="joining_date" required>
                         </div>
                         
+                        <!-- Password -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Password <span class="text-muted" style="font-size: 0.85rem;">(Optional - auto-generated if empty)</span></label>
+                            <input type="password" class="form-control" name="password" placeholder="Min 4 characters">
+                            <small class="text-muted">Leave empty to generate temporary password automatically</small>
+                        </div>
+                        
+                        <!-- Confirm Password -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Confirm Password <span class="text-muted" style="font-size: 0.85rem;"></span></label>
+                            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm password">
+                        </div>
+                        
                         <!-- Status -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Status</label>

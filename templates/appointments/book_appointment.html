@@ -128,7 +128,8 @@
                                     <span>{{ hospital.address }}</span>
                                 </div>
                                 <div class="hospital-distance">
-                                    <i class="bi bi-clock"></i> Sun-Thu, 5:00 PM - 8:00 PM
+                                    <i class="bi bi-calendar-check"></i>
+                                    Select to see available slots
                                 </div>
                             </div>
                             {% endfor %}
@@ -151,6 +152,8 @@
                                     <div style="font-size: 1.1rem; font-weight: 700;">{{ date_group.grouper|date:"d" }}</div>
                                     <small>{{ date_group.grouper|date:"M d" }}</small>
                                 </button>
+                            {% empty %}
+                                <p class="text-muted mb-0">No available dates found for this doctor in the next 21 days.</p>
                             {% endfor %}
                         </div>
                     </div>
@@ -180,6 +183,146 @@
             <script>
             const availabilitiesData = {{ availabilities_json|safe }};
             let selectedDate = null;
+
+            const summaryConsultation = document.getElementById('summaryConsultation');
+            const summaryHospital = document.getElementById('summaryHospital');
+            const summaryDate = document.getElementById('summaryDate');
+            const summaryTime = document.getElementById('summaryTime');
+
+            function formatDateLabel(isoDate) {
+                const dt = new Date(`${isoDate}T00:00:00`);
+                return dt.toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                });
+            }
+
+            function formatTimeSlot12Hour(timeSlotString) {
+                // Convert "09:00-11:00" format to "9:00 AM - 11:00 AM"
+                const [startTime, endTime] = timeSlotString.split('-');
+                
+                const convertTime = (time24) => {
+                    const [hours, minutes] = time24.split(':').map(Number);
+                    const isPM = hours >= 12;
+                    const hours12 = hours % 12 || 12;
+                    const suffix = isPM ? 'PM' : 'AM';
+                    return `${hours12}:${String(minutes).padStart(2, '0')} ${suffix}`;
+                };
+                
+                return `${convertTime(startTime)} - ${convertTime(endTime)}`;
+            }
+
+            function updateSummaryDateTime(dateText, timeText) {
+                if (summaryDate) {
+                    summaryDate.textContent = dateText || 'Not selected';
+                }
+                if (summaryTime) {
+                    summaryTime.textContent = timeText || 'Not selected';
+                }
+            }
+
+            function getSelectedHospitalId() {
+                return document.getElementById('hospital_id').value;
+            }
+
+            function clearTimeSelection(messageText = 'Select a date to see available slots') {
+                const timeSelection = document.getElementById('timeSelection');
+                timeSelection.innerHTML = `<p class="text-muted mb-0">${messageText}</p>`;
+                document.getElementById('availability_id').value = '';
+                updateSummaryDateTime(selectedDate ? formatDateLabel(selectedDate) : null, null);
+            }
+
+            function renderDateButtonsForHospital() {
+                const selectedHospitalId = getSelectedHospitalId();
+                const dateSelection = document.getElementById('dateSelection');
+
+                const uniqueDates = Array.from(new Set(
+                    availabilitiesData
+                        .filter(av => String(av.hospital_id) === String(selectedHospitalId))
+                        .map(av => av.date)
+                )).sort();
+
+                if (uniqueDates.length === 0) {
+                    dateSelection.innerHTML = '<p class="text-muted mb-0">No available dates for this hospital in the next 21 days.</p>';
+                    selectedDate = null;
+                    clearTimeSelection('No available slots for this hospital on selected date');
+                    return;
+                }
+
+                let dateHtml = '';
+                uniqueDates.forEach(dateIso => {
+                    const dt = new Date(`${dateIso}T00:00:00`);
+                    const dayNum = String(dt.getDate()).padStart(2, '0');
+                    const monthLabel = dt.toLocaleDateString('en-US', { month: 'short' });
+                    dateHtml += `
+                        <button type="button" class="date-pill date-btn" data-date="${dateIso}">
+                            <div style="font-size: 1.1rem; font-weight: 700;">${dayNum}</div>
+                            <small>${monthLabel} ${dayNum}</small>
+                        </button>
+                    `;
+                });
+
+                dateSelection.innerHTML = dateHtml;
+
+                const dateButtons = document.querySelectorAll('.date-btn');
+                dateButtons.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        dateButtons.forEach(b => b.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedDate = this.getAttribute('data-date');
+                        renderTimesForSelectedFilters();
+                    });
+                });
+
+                dateButtons[0].click();
+            }
+
+            function renderTimesForSelectedFilters() {
+                const selectedHospitalId = getSelectedHospitalId();
+                const timeSelection = document.getElementById('timeSelection');
+
+                if (!selectedDate) {
+                    clearTimeSelection();
+                    return;
+                }
+
+                const timesForDate = availabilitiesData.filter(av =>
+                    av.date === selectedDate && String(av.hospital_id) === String(selectedHospitalId)
+                );
+
+                if (timesForDate.length === 0) {
+                    clearTimeSelection('No available slots for this hospital on selected date');
+                    return;
+                }
+
+                let timeHtml = '';
+                timesForDate.forEach(av => {
+                    const formattedTime = formatTimeSlot12Hour(av.time_slot);
+                    timeHtml += `
+                        <button type="button" class="date-pill time-btn" data-availability-id="${av.id}">
+                            ${formattedTime}
+                        </button>
+                    `;
+                });
+
+                timeSelection.innerHTML = timeHtml;
+                document.querySelectorAll('.time-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                        this.classList.add('selected');
+                        document.getElementById('availability_id').value = this.getAttribute('data-availability-id');
+                        updateSummaryDateTime(formatDateLabel(selectedDate), this.textContent.trim());
+                    });
+                });
+
+                const firstTimeBtn = timeSelection.querySelector('.time-btn');
+                if (firstTimeBtn) {
+                    firstTimeBtn.click();
+                }
+            }
             
             // ===== CONSULTATION TYPE SELECTION =====
             const consultationBtns = document.querySelectorAll('.consultation-type-btn');
@@ -188,7 +331,11 @@
                     e.preventDefault();
                     consultationBtns.forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
-                    document.getElementById('consultation_type').value = this.getAttribute('data-value');
+                    const selectedType = this.getAttribute('data-value');
+                    document.getElementById('consultation_type').value = selectedType;
+                    if (summaryConsultation) {
+                        summaryConsultation.textContent = selectedType === 'online' ? 'Online Consultation' : 'In-Person Consultation';
+                    }
                 });
             });
             
@@ -200,50 +347,24 @@
                     hospitalCards.forEach(c => c.classList.remove('selected'));
                     this.classList.add('selected');
                     document.getElementById('hospital_id').value = this.getAttribute('data-hospital-id');
+                    const hospitalNameNode = this.querySelector('.hospital-name');
+                    if (summaryHospital && hospitalNameNode) {
+                        summaryHospital.textContent = hospitalNameNode.textContent.trim();
+                    }
+                    renderDateButtonsForHospital();
                 });
             });
             
             if (hospitalCards.length > 0) {
                 hospitalCards[0].classList.add('selected');
+                const firstHospitalNameNode = hospitalCards[0].querySelector('.hospital-name');
+                if (summaryHospital && firstHospitalNameNode) {
+                    summaryHospital.textContent = firstHospitalNameNode.textContent.trim();
+                }
             }
-            
-            // ===== DATE SELECTION =====
-            const dateButtons = document.querySelectorAll('.date-btn');
-            dateButtons.forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    dateButtons.forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    selectedDate = this.getAttribute('data-date');
-                    
-                    const timesForDate = availabilitiesData.filter(av => av.date === selectedDate);
-                    const timeSelection = document.getElementById('timeSelection');
-                    
-                    if (timesForDate.length === 0) {
-                        timeSelection.innerHTML = '<p class="text-muted">No available slots for this date</p>';
-                        return;
-                    }
-                    
-                    let timeHtml = '';
-                    timesForDate.forEach(av => {
-                        timeHtml += `
-                            <button type="button" class="date-pill time-btn" data-availability-id="${av.id}">
-                                ${av.time_slot}
-                            </button>
-                        `;
-                    });
-                    
-                    timeSelection.innerHTML = timeHtml;
-                    document.querySelectorAll('.time-btn').forEach(btn => {
-                        btn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
-                            this.classList.add('selected');
-                            document.getElementById('availability_id').value = this.getAttribute('data-availability-id');
-                        });
-                    });
-                });
-            });
+
+            clearTimeSelection();
+            renderDateButtonsForHospital();
             </script>
 
             {% elif step == '2' %}
@@ -322,7 +443,11 @@
 
             <div class="alert alert-info mb-4">
                 <i class="bi bi-info-circle me-2"></i>
-                <strong>Booking Summary:</strong> You are booking 1 appointment with a service charge of <strong>৳50</strong>. Consultation fees will be paid at the hospital.
+                <strong>Booking Summary:</strong>
+                {{ consultation_type_label }} at
+                {% if selected_hospital %}<strong>{{ selected_hospital.name }}</strong>{% else %}<strong>selected hospital</strong>{% endif %}
+                {% if selected_availability %} on <strong>{{ selected_availability.date|date:"d M, Y" }}</strong> at <strong>{{ selected_availability.time_slot }}</strong>{% endif %}.
+                Service charge: <strong>৳{{ service_charge }}</strong>.
             </div>
 
             <form method="POST">
@@ -564,16 +689,50 @@
                     <!-- Summary Breakdown -->
                     <div class="summary-section">
                         <div class="summary-row">
+                            <span class="summary-label">Consultation:</span>
+                            <span class="summary-value" id="summaryConsultation">{{ consultation_type_label }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Hospital:</span>
+                            <span class="summary-value" id="summaryHospital">
+                                {% if selected_hospital %}
+                                    {{ selected_hospital.name }}
+                                {% else %}
+                                    Not selected
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Date:</span>
+                            <span class="summary-value" id="summaryDate">
+                                {% if selected_availability %}
+                                    {{ selected_availability.date|date:"d M, Y" }}
+                                {% else %}
+                                    Not selected
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Time:</span>
+                            <span class="summary-value" id="summaryTime">
+                                {% if selected_availability %}
+                                    {{ selected_availability.time_slot }}
+                                {% else %}
+                                    Not selected
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="summary-row">
                             <span class="summary-label">Appointments:</span>
                             <span class="summary-value">1</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-label">Service Charge:</span>
-                            <span class="summary-value">৳50</span>
+                            <span class="summary-value">৳{{ service_charge }}</span>
                         </div>
                         <div class="summary-row total">
                             <span>Total:</span>
-                            <span class="text-primary">৳50</span>
+                            <span class="text-primary">৳{{ service_charge }}</span>
                         </div>
                     </div>
 
@@ -610,6 +769,18 @@
 </div>
 
 <style>
+    .date-pill.selected {
+        border-color: var(--primary-blue) !important;
+        background-color: var(--primary-blue) !important;
+        color: #fff !important;
+        box-shadow: 0 8px 20px rgba(10, 116, 218, 0.25);
+        transform: translateY(-1px);
+    }
+
+    .hospital-card.selected {
+        box-shadow: 0 10px 24px rgba(10, 116, 218, 0.18);
+    }
+
     .payment-card {
         border: 2px solid var(--subtle-border);
         border-radius: var(--border-radius-lg);

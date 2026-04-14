@@ -223,13 +223,19 @@
                                 <td class="small">
                                     <div class="btn-group btn-group-sm" role="group">
                                         {% if appt.status == 'pending' %}
-                                            <button class="btn btn-outline-success btn-sm confirm-btn" data-appt-id="{{ appt.id }}" title="Confirm appointment">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
+                                            <form method="post" action="{% url 'appointments:doctor_confirm' appt.id %}" class="d-inline" onsubmit="return confirm('Confirm this appointment?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-success btn-sm" title="Confirm appointment">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
+                                            </form>
                                         {% elif appt.status == 'confirmed' %}
-                                            <button class="btn btn-outline-info btn-sm complete-btn" data-appt-id="{{ appt.id }}" title="Mark as complete">
-                                                <i class="bi bi-check2-all"></i>
-                                            </button>
+                                            <form method="post" action="{% url 'appointments:doctor_complete' appt.id %}" class="d-inline" onsubmit="return confirm('Mark this appointment as complete?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-info btn-sm" title="Mark as complete">
+                                                    <i class="bi bi-check2-all"></i>
+                                                </button>
+                                            </form>
                                         {% endif %}
                                         <a href="{% url 'appointments:detail' appt.id %}" class="btn btn-outline-primary btn-sm" title="View details">
                                             <i class="bi bi-eye"></i>
@@ -285,13 +291,19 @@
                                 <td class="small">
                                     <div class="btn-group btn-group-sm" role="group">
                                         {% if appt.status == 'pending' %}
-                                            <button class="btn btn-outline-success btn-sm confirm-btn" data-appt-id="{{ appt.id }}" title="Confirm appointment">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
+                                            <form method="post" action="{% url 'appointments:doctor_confirm' appt.id %}" class="d-inline" onsubmit="return confirm('Confirm this appointment?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-success btn-sm" title="Confirm appointment">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
+                                            </form>
                                         {% elif appt.status == 'confirmed' %}
-                                            <button class="btn btn-outline-info btn-sm complete-btn" data-appt-id="{{ appt.id }}" title="Mark as complete">
-                                                <i class="bi bi-check2-all"></i>
-                                            </button>
+                                            <form method="post" action="{% url 'appointments:doctor_complete' appt.id %}" class="d-inline" onsubmit="return confirm('Mark this appointment as complete?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-info btn-sm" title="Mark as complete">
+                                                    <i class="bi bi-check2-all"></i>
+                                                </button>
+                                            </form>
                                         {% endif %}
                                         <a href="{% url 'appointments:detail' appt.id %}" class="btn btn-outline-primary btn-sm" title="View details">
                                             <i class="bi bi-eye"></i>
@@ -426,28 +438,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize all countdowns
     updateAllCountdowns();
     setInterval(updateAllCountdowns, 1000);
-
-    // Confirm appointment button
-    document.querySelectorAll('.confirm-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const apptId = this.dataset.apptId;
-            if (confirm('Confirm this appointment?')) {
-                // Add your AJAX call here
-                console.log('Confirming appointment:', apptId);
-            }
-        });
-    });
-
-    // Complete appointment button
-    document.querySelectorAll('.complete-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const apptId = this.dataset.apptId;
-            if (confirm('Mark this appointment as complete?')) {
-                // Add your AJAX call here
-                console.log('Completing appointment:', apptId);
-            }
-        });
-    });
 
     // Filter and search
     const searchInput = document.getElementById('appointmentSearch');

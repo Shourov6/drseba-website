@@ -73,7 +73,7 @@
                     
                     <div class="d-grid gap-2 d-md-flex">
                         <a href="{% url 'doctors:detail' doctor.id %}" class="btn btn-outline-primary flex-fill">View Profile</a>
-                        <a href="{% url 'doctors:detail' doctor.id %}" class="btn btn-primary flex-fill">Book Now</a>
+                        <a href="{% url 'appointments:book_doctor' doctor.id %}" class="btn btn-primary flex-fill">Book Now</a>
                     </div>
                 </div>
             </div>

@@ -37,7 +37,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted small">Time Slot</label>
-                            <p class="fw-bold mb-0">{{ appointment.time_slot }}</p>
+                            <p class="fw-bold mb-0">{{ time_slot_display }}</p>
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted small">Hospital</label>
@@ -69,15 +69,21 @@
                         <div class="row g-2">
                             <div class="col-md-4">
                                 <label class="text-muted small">Consultation Fee</label>
-                                <p class="fw-bold mb-0">৳ {{ appointment.consultation_fee }}</p>
+                                <p class="fw-bold mb-0">
+                                    ৳ {{ consultation_fee_display }}
+                                    <span class="badge bg-warning text-dark ms-2">Due</span>
+                                </p>
                             </div>
                             <div class="col-md-4">
                                 <label class="text-muted small">Service Fee</label>
-                                <p class="fw-bold mb-0">৳ {{ appointment.service_fee }}</p>
+                                <p class="fw-bold mb-0">
+                                    ৳ {{ service_fee_display }}
+                                    <span class="badge bg-success ms-2">Paid</span>
+                                </p>
                             </div>
                             <div class="col-md-4">
                                 <label class="text-muted small">Total</label>
-                                <p class="fw-bold text-primary mb-0">৳ {{ appointment.total_amount }}</p>
+                                <p class="fw-bold text-primary mb-0">৳ {{ total_amount_display }}</p>
                             </div>
                         </div>
                         <div class="mt-3">

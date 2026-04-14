@@ -2,7 +2,7 @@
 Admin configuration for doctors app
 """
 from django.contrib import admin
-from .models import Specialty, Hospital, Doctor, DoctorHospital, Review, DoctorAvailability
+from .models import Specialty, Hospital, Doctor, DoctorHospital, Review, DoctorAvailability, DoctorWeeklySchedule
 
 
 @admin.register(Specialty)
@@ -170,6 +170,18 @@ class DoctorHospitalAdmin(admin.ModelAdmin):
     search_fields = ['doctor__user__first_name', 'doctor__user__last_name', 'hospital__name']
 
 
+@admin.register(DoctorWeeklySchedule)
+class DoctorWeeklyScheduleAdmin(admin.ModelAdmin):
+    """Doctor Weekly Schedule Admin"""
+    list_display = ['doctor', 'hospital', 'get_day_display', 'start_time', 'end_time', 'is_active']
+    list_filter = ['day_of_week', 'is_active', 'hospital']
+    search_fields = ['doctor__user__first_name', 'hospital__name']
+    
+    def get_day_display(self, obj):
+        return obj.get_day_of_week_display()
+    get_day_display.short_description = 'Day'
+
+
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
     """Review Admin"""
@@ -181,7 +193,7 @@ class ReviewAdmin(admin.ModelAdmin):
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
     """Doctor Availability Admin"""
-    list_display = ['doctor', 'hospital', 'date', 'time_slot', 'is_available', 'is_booked']
-    list_filter = ['is_available', 'is_booked', 'date']
+    list_display = ['doctor', 'hospital', 'date', 'time_slot', 'is_available', 'is_booked', 'is_exception']
+    list_filter = ['is_available', 'is_booked', 'is_exception', 'date']
     search_fields = ['doctor__user__first_name', 'hospital__name']
     date_hierarchy = 'date'
