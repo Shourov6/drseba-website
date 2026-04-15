@@ -132,7 +132,7 @@ class DoctorAdmin(admin.ModelAdmin):
     get_primary_hospital.short_description = 'Hospital'
     
     def get_consultation_fee(self, obj):
-        return f"৳ {obj.consultation_fee_in_person}"
+        return f"৳ {obj.display_in_person_fee}"
     get_consultation_fee.short_description = 'Consultation Fee'
     
     def get_available_time(self, obj):

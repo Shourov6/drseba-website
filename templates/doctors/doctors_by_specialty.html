@@ -67,7 +67,7 @@
                         </div>
                         <div class="text-end">
                             <small class="text-muted">Consultation</small>
-                            <p class="fw-bold text-primary mb-0">৳ {{ doctor.consultation_fee_in_person|default:"0" }}</p>
+                            <p class="fw-bold text-primary mb-0">৳ {{ doctor.lowest_consultation_fee|default_if_none:doctor.display_in_person_fee }}</p>
                         </div>
                     </div>
                     

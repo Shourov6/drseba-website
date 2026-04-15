@@ -134,7 +134,7 @@
                             </div>
                             {% endfor %}
                         </div>
-                        <input type="hidden" name="hospital_id" id="hospital_id" value="{{ hospitals.0.id }}" required>
+                        <input type="hidden" name="hospital_id" id="hospital_id" value="{{ selected_hospital_id|default:'' }}" required>
                     </div>
                 </div>
                 {% endif %}
@@ -146,14 +146,14 @@
                     </div>
                     <div class="card-body">
                         <div class="date-pills" id="dateSelection">
-                            {% regroup availabilities by date as availabilities_by_date %}
+                            {% regroup initial_hospital_availabilities by date as availabilities_by_date %}
                             {% for date_group in availabilities_by_date %}
                                 <button type="button" class="date-pill date-btn" data-date="{{ date_group.grouper|date:'Y-m-d' }}">
                                     <div style="font-size: 1.1rem; font-weight: 700;">{{ date_group.grouper|date:"d" }}</div>
                                     <small>{{ date_group.grouper|date:"M d" }}</small>
                                 </button>
                             {% empty %}
-                                <p class="text-muted mb-0">No available dates found for this doctor in the next 21 days.</p>
+                                <p class="text-muted mb-0">No available dates for this hospital in the next 21 days.</p>
                             {% endfor %}
                         </div>
                     </div>
@@ -166,7 +166,11 @@
                     </div>
                     <div class="card-body">
                         <div class="date-pills" id="timeSelection">
-                            <!-- Populated by JavaScript -->
+                            {% if initial_hospital_availabilities %}
+                                <p class="text-muted mb-0">Select a date to see available slots</p>
+                            {% else %}
+                                <p class="text-muted mb-0">No available slots for this hospital on selected date</p>
+                            {% endif %}
                         </div>
                         <input type="hidden" name="availability_id" id="availability_id" required>
                     </div>
@@ -223,11 +227,15 @@
             }
 
             function getSelectedHospitalId() {
-                return document.getElementById('hospital_id').value;
+                const hospitalInput = document.getElementById('hospital_id');
+                return hospitalInput ? hospitalInput.value : null;
             }
 
             function clearTimeSelection(messageText = 'Select a date to see available slots') {
                 const timeSelection = document.getElementById('timeSelection');
+                if (!timeSelection) {
+                    return;
+                }
                 timeSelection.innerHTML = `<p class="text-muted mb-0">${messageText}</p>`;
                 document.getElementById('availability_id').value = '';
                 updateSummaryDateTime(selectedDate ? formatDateLabel(selectedDate) : null, null);
@@ -236,6 +244,17 @@
             function renderDateButtonsForHospital() {
                 const selectedHospitalId = getSelectedHospitalId();
                 const dateSelection = document.getElementById('dateSelection');
+
+                if (!dateSelection) {
+                    return;
+                }
+
+                if (!selectedHospitalId) {
+                    dateSelection.innerHTML = '<p class="text-muted mb-0">No available dates for this hospital in the next 21 days.</p>';
+                    selectedDate = null;
+                    clearTimeSelection('No available slots for this hospital on selected date');
+                    return;
+                }
 
                 const uniqueDates = Array.from(new Set(
                     availabilitiesData
@@ -282,6 +301,15 @@
             function renderTimesForSelectedFilters() {
                 const selectedHospitalId = getSelectedHospitalId();
                 const timeSelection = document.getElementById('timeSelection');
+
+                if (!timeSelection) {
+                    return;
+                }
+
+                if (!selectedHospitalId) {
+                    clearTimeSelection('No available slots for this hospital on selected date');
+                    return;
+                }
 
                 if (!selectedDate) {
                     clearTimeSelection();
@@ -356,11 +384,21 @@
             });
             
             if (hospitalCards.length > 0) {
-                hospitalCards[0].classList.add('selected');
-                const firstHospitalNameNode = hospitalCards[0].querySelector('.hospital-name');
-                if (summaryHospital && firstHospitalNameNode) {
-                    summaryHospital.textContent = firstHospitalNameNode.textContent.trim();
+                const initialHospitalId = getSelectedHospitalId();
+                const initialCard = Array.from(hospitalCards).find(card =>
+                    String(card.getAttribute('data-hospital-id')) === String(initialHospitalId)
+                ) || hospitalCards[0];
+
+                hospitalCards.forEach(c => c.classList.remove('selected'));
+                initialCard.classList.add('selected');
+                document.getElementById('hospital_id').value = initialCard.getAttribute('data-hospital-id');
+
+                const initialHospitalNameNode = initialCard.querySelector('.hospital-name');
+                if (summaryHospital && initialHospitalNameNode) {
+                    summaryHospital.textContent = initialHospitalNameNode.textContent.trim();
                 }
+            } else if (summaryHospital) {
+                summaryHospital.textContent = 'Not selected';
             }
 
             clearTimeSelection();
@@ -414,10 +452,10 @@
 
                         <!-- Email -->
                         <div class="mb-3">
-                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <label class="form-label">Email (optional)</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                <input type="email" name="email" class="form-control" placeholder="patient@example.com" value="{{ request.user.email }}" required>
+                                <input type="email" name="email" class="form-control" placeholder="patient@example.com" value="{{ request.user.email }}">
                             </div>
                         </div>
 
@@ -716,7 +754,7 @@
                             <span class="summary-label">Time:</span>
                             <span class="summary-value" id="summaryTime">
                                 {% if selected_availability %}
-                                    {{ selected_availability.time_slot }}
+                                    {{ selected_time_slot_display|default:selected_availability.time_slot }}
                                 {% else %}
                                     Not selected
                                 {% endif %}

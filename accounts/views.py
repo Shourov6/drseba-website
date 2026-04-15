@@ -2,11 +2,19 @@
 Views for accounts app
 """
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
-from .forms import LoginForm, PatientRegistrationForm, DoctorRegistrationForm, PatientProfileForm, PasswordChangeForm
+from .forms import (
+    LoginForm,
+    PatientRegistrationForm,
+    DoctorRegistrationForm,
+    PatientProfileForm,
+    PasswordChangeForm,
+    is_gmail_address,
+    normalize_bd_phone,
+)
 from .models import User, PatientProfile
 
 
@@ -16,26 +24,59 @@ def login_view(request):
         return redirect('dashboard:index')
     
     if request.method == 'POST':
-        form = LoginForm(request, data=request.POST)
+        form = LoginForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
+            identifier = (form.cleaned_data.get('identifier') or '').strip()
             password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                messages.success(request, f'Welcome back, {user.get_full_name() or user.username}!')
-                
-                # Redirect based on role
-                if user.is_super_admin():
+            user = None
+
+            if '@' in identifier:
+                user = User.objects.filter(email__iexact=identifier).first()
+            else:
+                normalized_phone = normalize_bd_phone('+880', identifier)
+                if normalized_phone:
+                    user = User.objects.filter(phone=normalized_phone).first()
+                if not user:
+                    user = User.objects.filter(username__iexact=identifier, role='admin').first()
+
+            if not user:
+                messages.error(request, 'No account found for that mobile number or Gmail address.')
+            elif user.is_super_admin():
+                if user.check_password(password):
+                    login(request, user)
+                    messages.success(request, f'Welcome back, {user.get_full_name() or user.username}!')
                     return redirect('dashboard:admin_dashboard')
-                elif user.is_doctor():
-                    return redirect('dashboard:doctor_dashboard')
-                elif user.is_employee():
-                    return redirect('dashboard:employee_dashboard')
-                else:
+                messages.error(request, 'Invalid admin username/email or password.')
+            elif user.is_doctor() or user.is_employee():
+                if not is_gmail_address(identifier):
+                    messages.error(request, 'Doctors and employees must log in using Gmail only.')
+                elif user.check_password(password):
+                    login(request, user)
+                    messages.success(request, f'Welcome back, {user.get_full_name() or user.username}!')
+                    if user.is_super_admin():
+                        return redirect('dashboard:admin_dashboard')
+                    elif user.is_doctor():
+                        return redirect('dashboard:doctor_dashboard')
+                    elif user.is_employee():
+                        return redirect('dashboard:employee_dashboard')
                     return redirect('dashboard:patient_dashboard')
+                else:
+                    messages.error(request, 'Invalid Gmail address or password.')
+            elif user.is_patient():
+                if user.check_password(password):
+                    login(request, user)
+                    messages.success(request, f'Welcome back, {user.get_full_name() or user.username}!')
+                    if user.is_super_admin():
+                        return redirect('dashboard:admin_dashboard')
+                    elif user.is_doctor():
+                        return redirect('dashboard:doctor_dashboard')
+                    elif user.is_employee():
+                        return redirect('dashboard:employee_dashboard')
+                    return redirect('dashboard:patient_dashboard')
+                else:
+                    messages.error(request, 'Invalid mobile number/Gmail or password.')
         else:
-            messages.error(request, 'Invalid username or password.')
+            messages.error(request, 'Enter a valid mobile number or Gmail address.')
     else:
         form = LoginForm()
     

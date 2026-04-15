@@ -17,8 +17,9 @@
                         {% csrf_token %}
                         
                         <div class="mb-3">
-                            <label class="form-label">Username or Email</label>
-                            {{ form.username }}
+                            <label class="form-label">Mobile Number or Gmail</label>
+                            {{ form.identifier }}
+                            <small class="text-muted d-block mt-1">Patients can use their mobile number or Gmail. Doctors and employees must use Gmail.</small>
                         </div>
                         
                         <div class="mb-3">

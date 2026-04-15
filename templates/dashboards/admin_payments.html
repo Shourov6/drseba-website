@@ -121,7 +121,8 @@
                                     <span class="input-group-text bg-white border-end-0">
                                         <i class="bi bi-search"></i>
                                     </span>
-                                    <input type="text" class="form-control border-start-0" id="paymentSearchInput" placeholder="Search payments..." oninput="searchPayments()">
+                                    <input type="text" class="form-control border-start-0" id="paymentSearchInput" placeholder="Search payments..." autocomplete="off" value="{{ search_query|default:'' }}" oninput="searchPayments()">
+                                    <button type="button" class="btn btn-primary" onclick="searchPayments()">Search</button>
                                     <ul class="list-group position-absolute w-100" id="paymentSuggestions" style="top: 100%; left: 0; z-index: 1000; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #dee2e6; border-top: none;"></ul>
                                 </div>
                             </div>
@@ -564,7 +565,11 @@ function displayPaymentSuggestions(results, container) {
         item.onclick = () => {
             document.getElementById('paymentSearchInput').value = result.display;
             container.style.display = 'none';
-            filterPaymentsTable(result.display);
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                filterPaymentsTable(result.display);
+            }
         };
         container.appendChild(item);
     });

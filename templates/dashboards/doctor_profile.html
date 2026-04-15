@@ -179,8 +179,8 @@
                                 <div>
                                     <small class="text-muted fw-bold d-block mb-2">Consultation Fee</small>
                                     <p class="mb-0">
-                                        {% if doctor.consultation_fee %}
-                                            ৳ {{ doctor.consultation_fee }}
+                                        {% if doctor.display_in_person_fee %}
+                                            ৳ {{ doctor.display_in_person_fee }}
                                         {% else %}
                                             <span class="text-secondary">Not set</span>
                                         {% endif %}

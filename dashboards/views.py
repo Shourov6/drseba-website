@@ -28,17 +28,24 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Sum, Avg, Q
 from django.utils import timezone
+from django.utils.text import slugify
 from django.http import JsonResponse
+from django.core.files.storage import default_storage
+from django.urls import reverse
 from datetime import date, timedelta, datetime
 from decimal import Decimal, InvalidOperation
+from urllib.parse import quote
+import json
 import string
 import secrets
 import re
 
 from accounts.models import User, PatientProfile, EmployeeProfile
+from accounts.forms import is_gmail_address, generate_unique_username
 from doctors.models import Doctor, Specialty, Hospital, Review, DoctorHospital, DoctorWeeklySchedule, DoctorAvailability
 from appointments.models import Appointment, CartItem, AppointmentHistory
 from payments.models import Payment, Invoice, DoctorEarning
+from .models import AdminNotification
 
 
 def dashboard_index(request):
@@ -314,6 +321,141 @@ def _sync_future_availability_for_schedule(schedule):
                 )
 
 
+DAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+DAY_TOKEN_TO_INDEX = {
+    'mon': 0,
+    'monday': 0,
+    'tue': 1,
+    'tues': 1,
+    'tuesday': 1,
+    'wed': 2,
+    'wednesday': 2,
+    'thu': 3,
+    'thur': 3,
+    'thurs': 3,
+    'thursday': 3,
+    'fri': 4,
+    'friday': 4,
+    'sat': 5,
+    'saturday': 5,
+    'sun': 6,
+    'sunday': 6,
+}
+
+
+def _parse_day_indices(day_tokens):
+    """Parse mixed day tokens to stable day indexes (0=Mon ... 6=Sun)."""
+    parsed = set()
+    for token in day_tokens:
+        raw = str(token or '').strip().lower()
+        if not raw:
+            continue
+        if raw.isdigit():
+            value = int(raw)
+            if 0 <= value <= 6:
+                parsed.add(value)
+            continue
+        mapped = DAY_TOKEN_TO_INDEX.get(raw)
+        if mapped is not None:
+            parsed.add(mapped)
+            continue
+        mapped = DAY_TOKEN_TO_INDEX.get(raw[:3])
+        if mapped is not None:
+            parsed.add(mapped)
+    return sorted(parsed)
+
+
+def _day_labels_from_indices(day_indices):
+    return [DAY_LABELS_SHORT[index] for index in sorted(set(day_indices)) if 0 <= index <= 6]
+
+
+def _derive_schedule_window(morning_start, morning_end, evening_start, evening_end):
+    """Pick a single weekly window spanning provided morning/evening ranges."""
+    windows = []
+    if morning_start and morning_end:
+        windows.append((morning_start, morning_end))
+    if evening_start and evening_end:
+        windows.append((evening_start, evening_end))
+
+    if not windows:
+        return None, None
+
+    starts = [window[0] for window in windows]
+    ends = [window[1] for window in windows]
+    start_time = min(starts)
+    end_time = max(ends)
+
+    if start_time >= end_time:
+        return None, None
+    return start_time, end_time
+
+
+def _disable_future_availability_for_day(doctor, hospital, day_index):
+    """Turn off non-exception future slots for a removed weekly day."""
+    start_date = date.today()
+    end_date = start_date + timedelta(days=30)
+    total_days = (end_date - start_date).days + 1
+
+    for offset in range(total_days):
+        current_date = start_date + timedelta(days=offset)
+        if current_date.weekday() != day_index:
+            continue
+        DoctorAvailability.objects.filter(
+            doctor=doctor,
+            hospital=hospital,
+            date=current_date,
+            is_exception=False,
+            is_booked=False,
+        ).update(is_available=False)
+
+
+def _sync_weekly_schedules_for_hospital(doctor, hospital, day_windows):
+    """Apply per-day weekly schedules for one doctor-hospital pair.
+
+    day_windows format: {day_index: (start_time, end_time)}
+    """
+    normalized_windows = {}
+    for day_index, window in (day_windows or {}).items():
+        if window is None or len(window) != 2:
+            continue
+        start_time, end_time = window
+        if start_time and end_time and start_time < end_time and 0 <= int(day_index) <= 6:
+            normalized_windows[int(day_index)] = (start_time, end_time)
+
+    if not normalized_windows:
+        stale_qs = DoctorWeeklySchedule.objects.filter(doctor=doctor, hospital=hospital)
+        for stale in stale_qs:
+            _disable_future_availability_for_day(doctor, hospital, stale.day_of_week)
+        stale_qs.delete()
+        return
+
+    requested_days = set(normalized_windows.keys())
+    existing = {
+        item.day_of_week: item
+        for item in DoctorWeeklySchedule.objects.filter(doctor=doctor, hospital=hospital)
+    }
+
+    for day_index in requested_days:
+        start_time, end_time = normalized_windows[day_index]
+        schedule, _ = DoctorWeeklySchedule.objects.update_or_create(
+            doctor=doctor,
+            hospital=hospital,
+            day_of_week=day_index,
+            defaults={
+                'start_time': start_time,
+                'end_time': end_time,
+                'is_active': True,
+            },
+        )
+        _sync_future_availability_for_schedule(schedule)
+
+    for day_index, schedule in existing.items():
+        if day_index in requested_days:
+            continue
+        _disable_future_availability_for_day(doctor, hospital, day_index)
+        schedule.delete()
+
+
 @login_required
 def doctor_add_schedule(request):
     """Add or update a weekly schedule for doctor"""
@@ -539,6 +681,86 @@ def admin_dashboard(request):
         total=Sum('amount')
     ).order_by('month')[:12]
 
+    # Persist and load dashboard notifications.
+    generated_notifications = []
+
+    if pending_verifications > 0:
+        generated_notifications.append(
+            {
+                'source_key': 'pending_verifications',
+                'title': 'Doctor verification required',
+                'message': f'{pending_verifications} doctor account(s) pending verification.',
+                'notif_type': 'warning',
+                'target_url': reverse('dashboard:admin_doctors'),
+            }
+        )
+
+    recent_pending_appointments = Appointment.objects.filter(status='pending').order_by('-created_at')[:3]
+    for appointment in recent_pending_appointments:
+        patient_name = 'Guest Patient'
+        if appointment.patient:
+            patient_name = appointment.patient.get_full_name() or appointment.patient.username or 'Guest Patient'
+        elif appointment.guest_full_name:
+            patient_name = appointment.guest_full_name
+
+        doctor_name = 'Unknown Doctor'
+        if appointment.doctor:
+            doctor_name = appointment.doctor.get_full_name() or appointment.doctor.user.get_full_name() or appointment.doctor.user.username or 'Unknown Doctor'
+
+        generated_notifications.append(
+            {
+                'source_key': f'pending_appt_{appointment.id}',
+                'title': 'Pending appointment',
+                'message': f"{patient_name} requested an appointment with {doctor_name}.",
+                'notif_type': 'info',
+                'target_url': reverse('dashboard:admin_appointments'),
+            }
+        )
+
+    recent_payments = Payment.objects.order_by('-created_at')[:2]
+    for payment in recent_payments:
+        generated_notifications.append(
+            {
+                'source_key': f'payment_{payment.id}',
+                'title': 'Payment update',
+                'message': f"Invoice {payment.invoice_number} is {payment.status.replace('_', ' ').title()}.",
+                'notif_type': 'success' if payment.status == 'completed' else 'warning',
+                'target_url': reverse('dashboard:admin_payments'),
+            }
+        )
+
+    for item in generated_notifications:
+        notification, created = AdminNotification.objects.get_or_create(
+            admin_user=request.user,
+            source_key=item['source_key'],
+            defaults={
+                'title': item['title'],
+                'message': item['message'],
+                'notif_type': item['notif_type'],
+                'target_url': item['target_url'],
+            },
+        )
+        if not created:
+            changed = False
+            if notification.title != item['title']:
+                notification.title = item['title']
+                changed = True
+            if notification.message != item['message']:
+                notification.message = item['message']
+                changed = True
+                notification.is_read = False
+            if notification.notif_type != item['notif_type']:
+                notification.notif_type = item['notif_type']
+                changed = True
+            if notification.target_url != item['target_url']:
+                notification.target_url = item['target_url']
+                changed = True
+            if changed:
+                notification.save()
+
+    admin_notifications = AdminNotification.objects.filter(admin_user=request.user).order_by('-created_at')[:8]
+    unread_notifications_count = AdminNotification.objects.filter(admin_user=request.user, is_read=False).count()
+
     context = {
         'total_doctors': total_doctors,
         'total_patients': total_patients,
@@ -549,9 +771,39 @@ def admin_dashboard(request):
         'recent_patients': recent_patients,
         'today_appointments': today_appointments,
         'monthly_revenue': monthly_revenue,
+        'admin_notifications': admin_notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
 
     return render(request, 'dashboards/admin_dashboard.html', context)
+
+
+@login_required
+def mark_admin_notification_read(request, notification_id):
+    """Mark a single admin notification as read and redirect."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    notification = get_object_or_404(AdminNotification, id=notification_id, admin_user=request.user)
+    notification.is_read = True
+    notification.save(update_fields=['is_read', 'updated_at'])
+
+    next_url = request.GET.get('next') or notification.target_url or reverse('dashboard:admin_dashboard')
+    return redirect(next_url)
+
+
+@login_required
+def mark_all_admin_notifications_read(request):
+    """Mark all admin notifications as read."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        AdminNotification.objects.filter(admin_user=request.user, is_read=False).update(is_read=True)
+
+    return redirect('dashboard:admin_dashboard')
 
 
 @login_required
@@ -562,9 +814,19 @@ def admin_users(request):
         return redirect('home')
     
     users = User.objects.all().order_by('-date_joined')
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        users = users.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
     
     context = {
         'users': users,
+        'search_query': search_query,
     }
     
     return render(request, 'dashboards/admin_users.html', context)
@@ -625,6 +887,7 @@ def search_employees(request):
             'name': full_name,
             'email': emp['email'],
             'phone': emp['phone'] or 'N/A',
+            'url': reverse('dashboard:admin_employees') + f'?search={quote(full_name)}',
             'display': f"{full_name} ({emp['email']})"
         })
     
@@ -647,17 +910,20 @@ def search_doctors(request):
         Q(user__last_name__icontains=query) |
         Q(user__email__icontains=query) |
         Q(bmdc_number__icontains=query)
-    ).select_related('user', 'specialty').values('id', 'user__first_name', 'user__last_name', 'user__email', 'specialty__name')[:10]
+    ).select_related('user').prefetch_related('specialties')[:10]
     
     results = []
     for doc in doctors:
-        full_name = f"Dr. {doc['user__first_name']} {doc['user__last_name']}"
+        full_name = f"Dr. {doc.user.first_name} {doc.user.last_name}"
+        specialty = doc.specialties.first()
+        specialty_name = specialty.name if specialty else 'N/A'
         results.append({
-            'id': doc['id'],
+            'id': doc.id,
             'name': full_name,
-            'email': doc['user__email'],
-            'specialty': doc['specialty__name'] or 'N/A',
-            'display': f"{full_name} - {doc['specialty__name']}"
+            'email': doc.user.email,
+            'specialty': specialty_name,
+            'url': reverse('dashboard:admin_doctors') + f'?search={quote(query)}&tab=doctors',
+            'display': f"{full_name} - {specialty_name}"
         })
     
     return JsonResponse({'success': True, 'results': results})
@@ -687,6 +953,7 @@ def search_hospitals(request):
             'name': hosp['name'],
             'phone': hosp['phone'] or 'N/A',
             'city': hosp['city'] or 'N/A',
+            'url': reverse('dashboard:admin_doctors') + f'?search={quote(query)}&tab=hospitals',
             'display': f"{hosp['name']} - {hosp['city']}"
         })
     
@@ -721,6 +988,7 @@ def search_appointments(request):
             'doctor': doctor_name,
             'date': str(appt['date']),
             'status': appt['status'],
+            'url': reverse('appointments:detail', args=[appt['id']]),
             'display': f"{patient_name} - {doctor_name} ({appt['date']})"
         })
     
@@ -743,19 +1011,24 @@ def search_payments(request):
         Q(appointment__patient__last_name__icontains=query) |
         Q(appointment__doctor__user__first_name__icontains=query) |
         Q(appointment__doctor__user__last_name__icontains=query)
-    ).select_related('appointment').values('id', 'appointment__patient__first_name', 'appointment__patient__last_name', 'appointment__doctor__user__first_name', 'appointment__doctor__user__last_name', 'amount', 'created_at')[:10]
+    ).select_related('appointment', 'appointment__invoice', 'appointment__patient', 'appointment__doctor__user')[:10]
     
     results = []
     for pay in payments:
-        patient_name = f"{pay['appointment__patient__first_name']} {pay['appointment__patient__last_name']}"
-        doctor_name = f"Dr. {pay['appointment__doctor__user__first_name']} {pay['appointment__doctor__user__last_name']}"
+        patient_name = pay.appointment.patient.get_full_name() if pay.appointment.patient else pay.appointment.guest_full_name or 'Guest'
+        doctor_name = pay.appointment.doctor.get_full_name()
+        try:
+            invoice = pay.appointment.invoice
+        except Exception:
+            invoice = None
         results.append({
-            'id': pay['id'],
+            'id': pay.id,
             'patient': patient_name,
             'doctor': doctor_name,
-            'amount': str(pay['amount']),
-            'date': str(pay['created_at'].date()),
-            'display': f"{patient_name} - {doctor_name} (৳{pay['amount']})"
+            'amount': str(pay.amount),
+            'date': str(pay.created_at.date()),
+            'url': reverse('payments:view_invoice', args=[invoice.id]) if invoice else reverse('payments:success', args=[pay.id]),
+            'display': f"{patient_name} - {doctor_name} (৳{pay.amount})"
         })
     
     return JsonResponse({'success': True, 'results': results})
@@ -798,6 +1071,7 @@ def search_users(request):
             'name': full_name,
             'email': user['email'],
             'role': role_str,
+            'url': reverse('dashboard:admin_users') + f'?search={quote(full_name)}',
             'display': f"{full_name} ({user['email']}) - {role_str}"
         })
     
@@ -813,10 +1087,30 @@ def admin_doctors(request):
     
     doctors = Doctor.objects.all().order_by('-created_at')
     hospitals = Hospital.objects.all().order_by('-created_at')
+    active_tab = request.GET.get('tab', 'doctors')
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        doctors = doctors.filter(
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(bmdc_number__icontains=search_query) |
+            Q(specialties__name__icontains=search_query) |
+            Q(hospitals__hospital__name__icontains=search_query)
+        ).distinct()
+        hospitals = hospitals.filter(
+            Q(name__icontains=search_query) |
+            Q(city__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(email__icontains=search_query)
+        ).distinct()
     
     context = {
         'doctors': doctors,
         'hospitals': hospitals,
+        'search_query': search_query,
+        'active_tab': active_tab,
     }
     
     return render(request, 'dashboards/admin_doctors.html', context)
@@ -864,6 +1158,227 @@ def admin_doctor_create(request):
 
 
 @login_required
+def admin_specialty_create(request):
+    """Admin page for managing specialties."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    search_query = request.GET.get('search', '').strip()
+
+    specialties = Specialty.objects.all().order_by('order', 'name')
+    if search_query:
+        specialties = specialties.filter(
+            Q(name__icontains=search_query) |
+            Q(name_bn__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+
+    if request.method == 'POST':
+        name = (request.POST.get('name') or '').strip()
+        description = (request.POST.get('description') or '').strip()
+        icon_path = ''
+
+        if not name:
+            messages.error(request, 'Specialty name is required.')
+            return redirect('dashboard:admin_specialty_create')
+
+        if Specialty.objects.filter(name__iexact=name).exists():
+            messages.error(request, 'A specialty with this name already exists.')
+            return redirect('dashboard:admin_specialty_create')
+
+        icon_file = request.FILES.get('icon_image')
+        if icon_file:
+            allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'}
+            original_name = icon_file.name or ''
+            extension = '.' + original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+
+            if extension not in allowed_extensions:
+                messages.error(request, 'Invalid icon format. Use JPG, PNG, WEBP, GIF, or SVG.')
+                return redirect('dashboard:admin_specialty_create')
+
+            safe_name = slugify(name) or 'specialty'
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
+            file_name = f"specialties/icons/{safe_name}-{timestamp}{extension}"
+            icon_path = default_storage.save(file_name, icon_file)
+
+        Specialty.objects.create(
+            name=name,
+            description=description,
+            icon=icon_path,
+            is_active=True,
+        )
+
+        messages.success(request, f'Specialty "{name}" created successfully.')
+        return redirect('dashboard:admin_specialty_create')
+
+    return render(request, 'dashboards/admin_specialty_create.html', {
+        'specialties': specialties,
+        'search_query': search_query,
+    })
+
+
+@login_required
+def search_specialties(request):
+    """Autocomplete search for specialties."""
+    if not request.user.is_super_admin():
+        return JsonResponse({'success': False, 'results': []})
+
+    query = request.GET.get('q', '').strip()
+
+    if len(query) < 1:
+        return JsonResponse({'success': True, 'results': []})
+
+    specialties = Specialty.objects.filter(
+        Q(name__icontains=query) |
+        Q(name_bn__icontains=query) |
+        Q(description__icontains=query)
+    ).order_by('order', 'name')[:10]
+
+    results = []
+    for specialty in specialties:
+        results.append({
+            'id': specialty.id,
+            'name': specialty.name,
+            'description': specialty.description or 'No description',
+            'url': reverse('dashboard:admin_specialty_create') + f'?search={quote(query)}',
+            'display': specialty.name,
+        })
+
+    return JsonResponse({'success': True, 'results': results})
+
+
+@login_required
+def create_specialty_ajax(request):
+    """Create specialty from admin doctor create page modal."""
+    if not request.user.is_super_admin():
+        return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid method.'}, status=405)
+
+    name = (request.POST.get('name') or '').strip()
+    description = (request.POST.get('description') or '').strip()
+    icon_path = ''
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Specialty name is required.'}, status=400)
+
+    if Specialty.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'success': False, 'message': 'A specialty with this name already exists.'}, status=400)
+
+    icon_file = request.FILES.get('icon_image')
+    if icon_file:
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'}
+        original_name = icon_file.name or ''
+        extension = '.' + original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+
+        if extension not in allowed_extensions:
+            return JsonResponse(
+                {'success': False, 'message': 'Invalid icon format. Use JPG, PNG, WEBP, GIF, or SVG.'},
+                status=400,
+            )
+
+        safe_name = slugify(name) or 'specialty'
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
+        file_name = f"specialties/icons/{safe_name}-{timestamp}{extension}"
+        icon_path = default_storage.save(file_name, icon_file)
+
+    specialty = Specialty.objects.create(
+        name=name,
+        description=description,
+        icon=icon_path,
+        is_active=True,
+    )
+
+    return JsonResponse(
+        {
+            'success': True,
+            'message': 'Specialty created successfully.',
+            'specialty': {
+                'id': specialty.id,
+                'name': specialty.name,
+                'icon': specialty.icon,
+            },
+        }
+    )
+
+
+@login_required
+def update_specialty(request, specialty_id):
+    """Update specialty from admin specialty management page."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('dashboard:admin_specialty_create')
+
+    specialty = get_object_or_404(Specialty, id=specialty_id)
+
+    name = (request.POST.get('name') or '').strip()
+    name_bn = (request.POST.get('name_bn') or '').strip()
+    description = (request.POST.get('description') or '').strip()
+    is_active = request.POST.get('is_active') == 'on'
+
+    if not name:
+        messages.error(request, 'Specialty name is required.')
+        return redirect('dashboard:admin_specialty_create')
+
+    if Specialty.objects.filter(name__iexact=name).exclude(id=specialty.id).exists():
+        messages.error(request, 'A specialty with this name already exists.')
+        return redirect('dashboard:admin_specialty_create')
+
+    icon_file = request.FILES.get('icon_image')
+    if icon_file:
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'}
+        original_name = icon_file.name or ''
+        extension = '.' + original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+
+        if extension not in allowed_extensions:
+            messages.error(request, 'Invalid icon format. Use JPG, PNG, WEBP, GIF, or SVG.')
+            return redirect('dashboard:admin_specialty_create')
+
+        safe_name = slugify(name) or 'specialty'
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
+        file_name = f"specialties/icons/{safe_name}-{timestamp}{extension}"
+        specialty.icon = default_storage.save(file_name, icon_file)
+
+    specialty.name = name
+    specialty.name_bn = name_bn
+    specialty.description = description
+    specialty.is_active = is_active
+    specialty.save()
+
+    messages.success(request, f'Specialty "{specialty.name}" updated successfully.')
+    return redirect('dashboard:admin_specialty_create')
+
+
+@login_required
+def delete_specialty(request, specialty_id):
+    """Delete specialty from admin specialty management page."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('dashboard:admin_specialty_create')
+
+    specialty = get_object_or_404(Specialty, id=specialty_id)
+    specialty_name = specialty.name
+
+    if specialty.doctors.exists():
+        messages.error(request, f'Cannot delete "{specialty_name}" because doctors are assigned to it.')
+        return redirect('dashboard:admin_specialty_create')
+
+    specialty.delete()
+    messages.success(request, f'Specialty "{specialty_name}" deleted successfully.')
+    return redirect('dashboard:admin_specialty_create')
+
+
+@login_required
 def verify_doctor(request, doctor_id):
     """Verify doctor account"""
     if not request.user.is_super_admin():
@@ -893,6 +1408,45 @@ def toggle_doctor_status(request, doctor_id):
     
     status = "activated" if doctor.is_active else "deactivated"
     messages.success(request, f'Doctor {doctor.get_full_name()} has been {status}.')
+    return redirect('dashboard:admin_doctors')
+
+
+@login_required
+def delete_doctor(request, doctor_id):
+    """Delete doctor account and profile."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('dashboard:admin_doctors')
+
+    doctor = get_object_or_404(Doctor, id=doctor_id)
+    doctor_name = doctor.get_full_name()
+    user = doctor.user
+
+    # Deleting the user cascades to Doctor profile via OneToOne relation.
+    user.delete()
+    messages.success(request, f'Doctor {doctor_name} has been deleted.')
+    return redirect('dashboard:admin_doctors')
+
+
+@login_required
+def delete_hospital(request, hospital_id):
+    """Delete hospital from admin dashboard."""
+    if not request.user.is_super_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('dashboard:admin_doctors')
+
+    hospital = get_object_or_404(Hospital, id=hospital_id)
+    hospital_name = hospital.name
+    hospital.delete()
+    messages.success(request, f'Hospital {hospital_name} has been deleted.')
     return redirect('dashboard:admin_doctors')
 
 
@@ -929,15 +1483,175 @@ def admin_doctor_detail(request, doctor_id):
         return redirect('home')
     
     doctor = get_object_or_404(Doctor, id=doctor_id)
-    hospital_schedules = doctor.hospitals.all().select_related('hospital')
+    hospital_schedules = list(doctor.hospitals.all().select_related('hospital'))
+    weekly_schedules = list(
+        DoctorWeeklySchedule.objects.filter(doctor=doctor)
+        .select_related('hospital')
+        .order_by('hospital_id', 'day_of_week', 'start_time')
+    )
+    weekly_by_hospital = {}
+    for weekly in weekly_schedules:
+        weekly_by_hospital.setdefault(weekly.hospital_id, []).append(weekly)
+
+    schedule_weekly_payload = {}
+    for schedule in hospital_schedules:
+        entries = weekly_by_hospital.get(schedule.hospital_id, [])
+        schedule.weekly_entries = entries
+        schedule.display_rows = []
+        if entries:
+            day_indices = sorted({entry.day_of_week for entry in entries})
+            schedule.display_days = _day_labels_from_indices(day_indices)
+            for entry in entries:
+                start_text = entry.start_time.strftime('%I:%M %p') if entry.start_time else ''
+                end_text = entry.end_time.strftime('%I:%M %p') if entry.end_time else ''
+                time_text = f"{start_text} - {end_text}" if start_text and end_text else 'N/A'
+                schedule.display_rows.append({
+                    'day': entry.get_day_of_week_display(),
+                    'time': time_text,
+                    'day_index': entry.day_of_week,
+                    'start': start_text,
+                    'end': end_text,
+                })
+            schedule.display_time = 'N/A'
+            schedule_weekly_payload[str(schedule.id)] = [
+                {
+                    'day_index': entry.day_of_week,
+                    'start': entry.start_time.strftime('%H:%M') if entry.start_time else '',
+                    'end': entry.end_time.strftime('%H:%M') if entry.end_time else '',
+                }
+                for entry in entries
+            ]
+        else:
+            schedule.display_days = schedule.consultation_days or []
+            if schedule.morning_start and schedule.morning_end:
+                schedule.display_time = f"{schedule.morning_start.strftime('%H:%M')} - {schedule.morning_end.strftime('%H:%M')}"
+            elif schedule.evening_start and schedule.evening_end:
+                schedule.display_time = f"{schedule.evening_start.strftime('%H:%M')} - {schedule.evening_end.strftime('%H:%M')}"
+            else:
+                schedule.display_time = 'N/A'
+
+    assigned_hospital_ids = [schedule.hospital_id for schedule in hospital_schedules]
+    available_hospitals = Hospital.objects.filter(is_active=True).exclude(id__in=assigned_hospital_ids).order_by('name')
+    qualifications_list = [q.strip() for q in re.split(r'[|,\n]+', doctor.qualifications or '') if q.strip()]
     
     context = {
         'doctor': doctor,
         'hospital_schedules': hospital_schedules,
+        'available_hospitals': available_hospitals,
         'specialties': Specialty.objects.filter(is_active=True).order_by('name'),
+        'qualifications_list': qualifications_list,
+        'schedule_weekly_json': json.dumps(schedule_weekly_payload),
     }
     
     return render(request, 'dashboards/admin_doctor_detail.html', context)
+
+
+@login_required
+def add_hospital_schedule(request, doctor_id):
+    """Add a hospital schedule for a doctor."""
+    if not request.user.is_super_admin():
+        return JsonResponse({'success': False, 'message': 'Access denied.'})
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid method.'})
+
+    doctor = get_object_or_404(Doctor, id=doctor_id)
+
+    try:
+        from datetime import datetime
+
+        def parse_flexible_time(value):
+            if not value:
+                return None
+            cleaned = str(value).strip().upper().replace('.', '')
+            formats = ['%I:%M %p', '%I %p', '%H:%M']
+            for fmt in formats:
+                try:
+                    return datetime.strptime(cleaned, fmt).time()
+                except ValueError:
+                    continue
+            raise ValueError('Invalid time format. Use HH:MM AM/PM or HH:MM')
+
+        hospital_id = request.POST.get('hospital_id')
+        if not hospital_id:
+            return JsonResponse({'success': False, 'message': 'Please select a hospital.'})
+
+        hospital = get_object_or_404(Hospital, id=hospital_id, is_active=True)
+
+        if DoctorHospital.objects.filter(doctor=doctor, hospital=hospital).exists():
+            return JsonResponse({'success': False, 'message': 'This hospital is already assigned to the doctor.'})
+
+        selected_day_indices = []
+        selected_starts = []
+        selected_ends = []
+        day_windows = {}
+        for day_index in range(7):
+            if request.POST.get(f'day_{day_index}') != 'on':
+                continue
+            start_time = parse_flexible_time(request.POST.get(f'start_time_{day_index}'))
+            end_time = parse_flexible_time(request.POST.get(f'end_time_{day_index}'))
+            if not start_time or not end_time:
+                return JsonResponse({'success': False, 'message': 'Please set both Start and End for each selected day.'})
+            if start_time >= end_time:
+                return JsonResponse({'success': False, 'message': 'End time must be after start time for selected days.'})
+            selected_day_indices.append(day_index)
+            selected_starts.append(start_time)
+            selected_ends.append(end_time)
+            day_windows[day_index] = (start_time, end_time)
+
+        if selected_day_indices:
+            day_indices = sorted(set(selected_day_indices))
+            morning_start = min(selected_starts)
+            morning_end = max(selected_ends)
+            evening_start = None
+            evening_end = None
+        else:
+            days_str = request.POST.get('consultation_days', '')
+            raw_days = [day.strip() for day in days_str.split(',') if day.strip()]
+            day_indices = _parse_day_indices(raw_days)
+            if not day_indices:
+                return JsonResponse({'success': False, 'message': 'Please provide at least one consultation day.'})
+
+            morning_start = parse_flexible_time(request.POST.get('morning_start'))
+            morning_end = parse_flexible_time(request.POST.get('morning_end'))
+            evening_start = parse_flexible_time(request.POST.get('evening_start'))
+            evening_end = parse_flexible_time(request.POST.get('evening_end'))
+
+            if not ((morning_start and morning_end) or (evening_start and evening_end)):
+                return JsonResponse(
+                    {'success': False, 'message': 'Please provide at least one complete time range (morning or evening).'}
+                )
+
+            weekly_start, weekly_end = _derive_schedule_window(morning_start, morning_end, evening_start, evening_end)
+            if not weekly_start or not weekly_end:
+                return JsonResponse({'success': False, 'message': 'End time must be after start time.'})
+            day_windows = {day_index: (weekly_start, weekly_end) for day_index in day_indices}
+
+        consultation_days = _day_labels_from_indices(day_indices)
+        schedule = DoctorHospital.objects.create(
+            doctor=doctor,
+            hospital=hospital,
+            consultation_days=consultation_days,
+            consultation_fee=request.POST.get('consultation_fee') or 0,
+            service_charge=request.POST.get('service_charge') or 0,
+            morning_start=morning_start,
+            morning_end=morning_end,
+            evening_start=evening_start,
+            evening_end=evening_end,
+            is_primary=(not doctor.hospitals.exists()),
+            is_active=True,
+        )
+
+        _sync_weekly_schedules_for_hospital(doctor, hospital, day_windows)
+
+        return JsonResponse(
+            {
+                'success': True,
+                'message': f'Schedule added for {schedule.hospital.name}.',
+            }
+        )
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 
 @login_required
@@ -984,7 +1698,9 @@ def update_doctor_details(request, doctor_id):
         # Update doctor-specific fields
         doctor.bmdc_number = request.POST.get('bmdc_number', doctor.bmdc_number)
         doctor.experience_years = request.POST.get('experience_years', doctor.experience_years)
-        doctor.qualifications = request.POST.get('qualifications', doctor.qualifications)
+        qualifications_raw = request.POST.get('qualifications', doctor.qualifications)
+        qualifications_items = [q.strip() for q in re.split(r'[|,\n]+', qualifications_raw or '') if q.strip()]
+        doctor.qualifications = ' | '.join(qualifications_items)
         doctor.commission_rate = request.POST.get('commission_rate', doctor.commission_rate)
         doctor.is_verified = request.POST.get('is_verified') == 'on'
         doctor.is_active = request.POST.get('is_active') == 'on'
@@ -1030,23 +1746,67 @@ def update_hospital_schedule(request, doctor_id, schedule_id):
                     continue
             raise ValueError('Invalid time format. Use HH:MM AM/PM or HH:MM')
 
-        # Parse consultation days (comma-separated)
-        days_str = request.POST.get('consultation_days', '')
-        days = [day.strip() for day in days_str.split(',') if day.strip()]
-        
-        schedule.consultation_days = days
-        
-        # Update time slots
-        if request.POST.get('morning_start'):
-            schedule.morning_start = parse_flexible_time(request.POST.get('morning_start'))
-        if request.POST.get('morning_end'):
-            schedule.morning_end = parse_flexible_time(request.POST.get('morning_end'))
-        if request.POST.get('evening_start'):
-            schedule.evening_start = parse_flexible_time(request.POST.get('evening_start'))
-        if request.POST.get('evening_end'):
-            schedule.evening_end = parse_flexible_time(request.POST.get('evening_end'))
+        selected_day_indices = []
+        selected_starts = []
+        selected_ends = []
+        day_windows = {}
+        for day_index in range(7):
+            if request.POST.get(f'day_{day_index}') != 'on':
+                continue
+            start_time = parse_flexible_time(request.POST.get(f'start_time_{day_index}'))
+            end_time = parse_flexible_time(request.POST.get(f'end_time_{day_index}'))
+            if not start_time or not end_time:
+                return JsonResponse({'success': False, 'message': 'Please set both Start and End for each selected day.'})
+            if start_time >= end_time:
+                return JsonResponse({'success': False, 'message': 'End time must be after start time for selected days.'})
+            selected_day_indices.append(day_index)
+            selected_starts.append(start_time)
+            selected_ends.append(end_time)
+            day_windows[day_index] = (start_time, end_time)
+
+        if selected_day_indices:
+            day_indices = sorted(set(selected_day_indices))
+            schedule.consultation_days = _day_labels_from_indices(day_indices)
+            schedule.morning_start = min(selected_starts)
+            schedule.morning_end = max(selected_ends)
+            schedule.evening_start = None
+            schedule.evening_end = None
+        else:
+            days_str = request.POST.get('consultation_days', '')
+            raw_days = [day.strip() for day in days_str.split(',') if day.strip()]
+            day_indices = _parse_day_indices(raw_days)
+            if not day_indices:
+                return JsonResponse({'success': False, 'message': 'Please provide at least one consultation day.'})
+
+            schedule.consultation_days = _day_labels_from_indices(day_indices)
+
+            if request.POST.get('morning_start'):
+                schedule.morning_start = parse_flexible_time(request.POST.get('morning_start'))
+            if request.POST.get('morning_end'):
+                schedule.morning_end = parse_flexible_time(request.POST.get('morning_end'))
+            if request.POST.get('evening_start'):
+                schedule.evening_start = parse_flexible_time(request.POST.get('evening_start'))
+            if request.POST.get('evening_end'):
+                schedule.evening_end = parse_flexible_time(request.POST.get('evening_end'))
+
+            weekly_start, weekly_end = _derive_schedule_window(
+                schedule.morning_start,
+                schedule.morning_end,
+                schedule.evening_start,
+                schedule.evening_end,
+            )
+            if not weekly_start or not weekly_end:
+                return JsonResponse({'success': False, 'message': 'End time must be after start time.'})
+            day_windows = {day_index: (weekly_start, weekly_end) for day_index in day_indices}
+
+        if request.POST.get('consultation_fee') is not None and str(request.POST.get('consultation_fee')).strip() != '':
+            schedule.consultation_fee = request.POST.get('consultation_fee')
+        if request.POST.get('service_charge') is not None and str(request.POST.get('service_charge')).strip() != '':
+            schedule.service_charge = request.POST.get('service_charge')
         
         schedule.save()
+
+        _sync_weekly_schedules_for_hospital(doctor, schedule.hospital, day_windows)
         
         return JsonResponse({'success': True, 'message': 'Schedule updated successfully'})
     except Exception as e:
@@ -1067,6 +1827,14 @@ def remove_doctor_hospital(request, doctor_id, schedule_id):
     
     try:
         hospital_name = schedule.hospital.name
+        DoctorWeeklySchedule.objects.filter(doctor=doctor, hospital=schedule.hospital).delete()
+        DoctorAvailability.objects.filter(
+            doctor=doctor,
+            hospital=schedule.hospital,
+            date__gte=date.today(),
+            is_exception=False,
+            is_booked=False,
+        ).update(is_available=False)
         schedule.delete()
         return JsonResponse({'success': True, 'message': f'{hospital_name} removed successfully'})
     except Exception as e:
@@ -1108,6 +1876,10 @@ def create_doctor(request):
             password = request.POST.get('password', '')
             confirm_password = request.POST.get('confirm_password', '')
             
+            if not is_gmail_address(email):
+                messages.error(request, 'Doctors must use a Gmail address.')
+                return redirect('dashboard:admin_doctor_create')
+
             # Validate email
             if User.objects.filter(email=email).exists():
                 messages.error(request, 'Email already registered.')
@@ -1136,12 +1908,16 @@ def create_doctor(request):
             except Specialty.DoesNotExist:
                 messages.error(request, 'Selected specialty is invalid.')
                 return redirect('dashboard:admin_doctor_create')
+
+            qualification_raw = request.POST.get('qualification', '')
+            qualification_items = [q.strip() for q in re.split(r'[|,\n]+', qualification_raw or '') if q.strip()]
+            normalized_qualifications = ' | '.join(qualification_items)
             
             with transaction.atomic():
                 # Create user with provided password
                 user = User.objects.create_user(
                     email=email,
-                    username=email.split('@')[0],  # Use email prefix as username
+                    username=generate_unique_username(email.split('@')[0]),
                     first_name=first_name,
                     last_name=last_name,
                     password=password
@@ -1154,12 +1930,24 @@ def create_doctor(request):
                     user=user,
                     bmdc_number=request.POST.get('bmdc_number'),
                     experience_years=to_int(request.POST.get('experience_years'), 0),
-                    qualifications=request.POST.get('qualification', ''),
+                    qualifications=normalized_qualifications,
                     consultation_fee_online=0,
                     consultation_fee_in_person=0,
                     commission_rate=to_float(request.POST.get('commission_percentage'), 15.0),
                     is_active=request.POST.get('status') == 'active'
                 )
+                
+                # Set date of birth and gender if provided
+                if request.POST.get('date_of_birth'):
+                    doctor.date_of_birth = request.POST.get('date_of_birth')
+                if request.POST.get('gender'):
+                    doctor.gender = request.POST.get('gender')
+                doctor.save()
+
+                # Handle optional profile picture upload
+                if 'profile_picture' in request.FILES:
+                    doctor.profile_picture = request.FILES['profile_picture']
+                    doctor.save()
 
                 # Add specialty
                 doctor.specialties.add(specialty)
@@ -1189,16 +1977,26 @@ def create_doctor(request):
                     try:
                         hospital = Hospital.objects.get(id=hospital_id)
                         
+                        # Get consultation fee and service charge from form
+                        consultation_fee = to_float(request.POST.get(f'consultation_fee_{i}'), 500.0)
+                        service_charge = to_float(request.POST.get(f'service_charge_{i}'), 50.0)
+                        
                         # Create or get DoctorHospital association
                         doctor_hospital, _ = DoctorHospital.objects.get_or_create(
                             doctor=doctor,
                             hospital=hospital,
                             defaults={
                                 'is_primary': (i == 0),
-                                'consultation_fee': 500.0,  # Default values
-                                'service_charge': 50.0,
+                                'consultation_fee': consultation_fee,
+                                'service_charge': service_charge,
                             }
                         )
+                        doctor_hospital.consultation_fee = consultation_fee
+                        doctor_hospital.service_charge = service_charge
+
+                        selected_day_indices = []
+                        selected_starts = []
+                        selected_ends = []
                         
                         # Process weekly schedules for this hospital
                         # Days 0-6: Monday-Sunday
@@ -1227,8 +2025,30 @@ def create_doctor(request):
                                                 'is_active': True,
                                             }
                                         )
+                                        selected_day_indices.append(day_index)
+                                        selected_starts.append(start_time)
+                                        selected_ends.append(end_time)
                                     except (ValueError, Exception):
                                         pass
+
+                        if selected_day_indices and selected_starts and selected_ends:
+                            doctor_hospital.consultation_days = _day_labels_from_indices(selected_day_indices)
+                            doctor_hospital.morning_start = min(selected_starts)
+                            doctor_hospital.morning_end = max(selected_ends)
+                            doctor_hospital.evening_start = None
+                            doctor_hospital.evening_end = None
+                            doctor_hospital.save(
+                                update_fields=[
+                                    'consultation_days',
+                                    'consultation_fee',
+                                    'service_charge',
+                                    'morning_start',
+                                    'morning_end',
+                                    'evening_start',
+                                    'evening_end',
+                                    'updated_at',
+                                ]
+                            )
                         
                         # Process custom dates for this hospital
                         # Find all custom date entries with pattern: custom_date_{i}_{dateCount}
@@ -1257,6 +2077,11 @@ def create_doctor(request):
                                             custom_start_time = parse_flexible_time(custom_start_time_str)
                                         if custom_end_time_str:
                                             custom_end_time = parse_flexible_time(custom_end_time_str)
+
+                                        if custom_start_time and custom_end_time:
+                                            time_slot_value = f"{custom_start_time.strftime('%H:%M')}-{custom_end_time.strftime('%H:%M')}"
+                                        else:
+                                            time_slot_value = '09:00-11:00'
                                         
                                         # Update custom date exception if present, otherwise create it
                                         DoctorAvailability.objects.update_or_create(
@@ -1268,7 +2093,7 @@ def create_doctor(request):
                                                 'custom_start_time': custom_start_time,
                                                 'custom_end_time': custom_end_time,
                                                 'is_available': (status == 'available'),
-                                                'time_slot': '09:00-11:00',  # Default slot for custom dates
+                                                'time_slot': time_slot_value,
                                             }
                                         )
                                     except (ValueError, Exception):
@@ -1345,6 +2170,10 @@ def create_employee(request):
             password = request.POST.get('password', '')
             confirm_password = request.POST.get('confirm_password', '')
             is_active = request.POST.get('is_active') == 'on'
+
+            if not is_gmail_address(email):
+                messages.error(request, 'Employees must use a Gmail address.')
+                return redirect('dashboard:admin_employees')
             
             # Check if email already exists
             if User.objects.filter(email=email).exists():
@@ -1366,7 +2195,7 @@ def create_employee(request):
             
             # Create User account
             user = User.objects.create_user(
-                username=email.split('@')[0],
+                username=generate_unique_username(email.split('@')[0]),
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
@@ -1611,6 +2440,19 @@ def admin_appointments(request):
         role='employee',
         is_active=True,
     ).select_related('employee_profile').order_by('first_name', 'last_name', 'username')
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        all_appointments = all_appointments.filter(
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(guest_full_name__icontains=search_query) |
+            Q(doctor__user__first_name__icontains=search_query) |
+            Q(doctor__user__last_name__icontains=search_query) |
+            Q(hospital__name__icontains=search_query) |
+            Q(status__icontains=search_query) |
+            Q(time_slot__icontains=search_query)
+        ).distinct()
     
     # Separate distributed and non-distributed
     distributed_appointments = all_appointments.filter(assigned_to__isnull=False)
@@ -1683,6 +2525,7 @@ def admin_appointments(request):
         'non_distributed_appointments_json': non_distributed_json,
         'employees_json': employees_json,
         'recent_appointments': all_appointments[:10],  # For initial display
+        'search_query': search_query,
     }
     
     return render(request, 'dashboards/admin_appointments.html', context)
@@ -1721,6 +2564,8 @@ def admin_payments(request):
         messages.error(request, 'Access denied.')
         return redirect('home')
 
+    search_query = request.GET.get('search', '').strip()
+
     appointments = Appointment.objects.select_related(
         'patient',
         'doctor',
@@ -1728,6 +2573,20 @@ def admin_payments(request):
         'payment',
         'invoice',
     ).order_by('-created_at')
+
+    if search_query:
+        appointments = appointments.filter(
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(guest_full_name__icontains=search_query) |
+            Q(doctor__user__first_name__icontains=search_query) |
+            Q(doctor__user__last_name__icontains=search_query) |
+            Q(doctor__user__email__icontains=search_query) |
+            Q(hospital__name__icontains=search_query) |
+            Q(payment__method__icontains=search_query) |
+            Q(payment__status__icontains=search_query) |
+            Q(invoice__invoice_number__icontains=search_query)
+        ).distinct()
 
     payment_rows = []
     method_icon_map = {
@@ -1796,6 +2655,7 @@ def admin_payments(request):
         'total_revenue': total_revenue,
         'pending_amount': pending_amount,
         'overdue_amount': overdue_amount,
+        'search_query': search_query,
     }
     
     return render(request, 'dashboards/admin_payments.html', context)

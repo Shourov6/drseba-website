@@ -4,6 +4,7 @@ Models for doctors app
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+from decimal import Decimal
 import re
 
 
@@ -69,6 +70,15 @@ class Doctor(models.Model):
     
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_profile')
     
+    # Personal Information
+    date_of_birth = models.DateField(null=True, blank=True)
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
+    
     # Professional Information
     bmdc_number = models.CharField(max_length=20, unique=True, help_text="BMDC Registration Number")
     specialties = models.ManyToManyField(Specialty, related_name='doctors')
@@ -127,6 +137,49 @@ class Doctor(models.Model):
     
     def get_primary_specialty(self):
         return self.specialties.first()
+
+    def get_hospital_consultation_fee(self, hospital=None):
+        """Return in-person fee configured on DoctorHospital association."""
+        hospital_links = self.hospitals.filter(is_active=True)
+
+        if hospital is not None:
+            hospital_id = hospital.id if hasattr(hospital, 'id') else hospital
+            specific_link = hospital_links.filter(hospital_id=hospital_id).first()
+            if specific_link and (specific_link.consultation_fee or Decimal('0.00')) > Decimal('0.00'):
+                return specific_link.consultation_fee
+
+        primary_link = hospital_links.filter(is_primary=True).first()
+        if primary_link and (primary_link.consultation_fee or Decimal('0.00')) > Decimal('0.00'):
+            return primary_link.consultation_fee
+
+        lowest_link = hospital_links.filter(consultation_fee__gt=0).order_by('consultation_fee').first()
+        if lowest_link:
+            return lowest_link.consultation_fee
+
+        return Decimal('0.00')
+
+    def get_consultation_fee(self, consultation_type='in_person', hospital=None):
+        """Resolve consultation fee consistently across the project."""
+        consultation_type = (consultation_type or 'in_person').lower()
+
+        if consultation_type == 'online':
+            return self.consultation_fee_online or Decimal('0.00')
+
+        hospital_fee = self.get_hospital_consultation_fee(hospital=hospital)
+        if hospital_fee > Decimal('0.00'):
+            return hospital_fee
+
+        return self.consultation_fee_in_person or Decimal('0.00')
+
+    @property
+    def display_in_person_fee(self):
+        """Template-friendly in-person fee."""
+        return self.get_consultation_fee('in_person')
+
+    @property
+    def display_online_fee(self):
+        """Template-friendly online fee."""
+        return self.get_consultation_fee('online')
     
     def update_rating(self):
         """Update doctor's average rating"""

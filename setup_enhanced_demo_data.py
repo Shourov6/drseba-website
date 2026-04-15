@@ -23,12 +23,17 @@ User = get_user_model()
 
 def clear_all_data():
     """Clear all non-admin data"""
+    if os.getenv('ALLOW_DEMO_DATA_RESET', '').lower() != 'yes':
+        print('⚠ Skipping data reset. Set ALLOW_DEMO_DATA_RESET=yes to allow this script to wipe data.')
+        return False
+
     Doctor.objects.all().delete()
     User.objects.filter(role__in=['doctor', 'patient', 'employee']).delete()
     Appointment.objects.all().delete()
     Payment.objects.all().delete()
     DoctorHospital.objects.all().delete()
     print("✓ Cleared all non-admin data")
+    return True
 
 def create_enhanced_doctors(hospitals, specializations):
     """Create many doctors across all specialties"""
@@ -253,7 +258,9 @@ def main():
     
     print("Step 0: Clearing Non-Admin Data")
     print("-" * 70)
-    clear_all_data()
+    if not clear_all_data():
+        print("\nStopping before any destructive changes were made.")
+        return
     
     print("\nStep 1: Getting Hospitals")
     print("-" * 70)

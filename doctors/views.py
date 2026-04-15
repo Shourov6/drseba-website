@@ -4,16 +4,30 @@ Views for doctors app
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, Min, F, DecimalField
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.utils.text import slugify
+import re
 from .models import Doctor, Specialty, Hospital, Review, DoctorAvailability
 from .forms import ReviewForm
 
 
+def _normalized_slug_token(value):
+    """Return lowercase alnum token for robust slug comparisons."""
+    return re.sub(r'[^a-z0-9]', '', slugify(value or ''))
+
+
 def doctor_list(request):
     """List all doctors with filtering"""
-    doctors = Doctor.objects.filter(is_verified=True, is_active=True)
+    doctors = Doctor.objects.filter(is_verified=True, is_active=True).annotate(
+        lowest_consultation_fee=Coalesce(
+            Min('hospitals__consultation_fee'),
+            F('consultation_fee_in_person'),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
+    )
     
     # Get filter parameters
     specialty_id = request.GET.get('specialty')
@@ -37,18 +51,23 @@ def doctor_list(request):
     if consultation_type == 'online':
         doctors = doctors.filter(consultation_fee_online__gt=0)
     elif consultation_type == 'in_person':
-        doctors = doctors.filter(consultation_fee_in_person__gt=0)
+        doctors = doctors.filter(
+            Q(consultation_fee_in_person__gt=0) |
+            Q(hospitals__consultation_fee__gt=0)
+        )
     
     if min_price:
         doctors = doctors.filter(
             Q(consultation_fee_online__gte=min_price) |
-            Q(consultation_fee_in_person__gte=min_price)
+            Q(consultation_fee_in_person__gte=min_price) |
+            Q(hospitals__consultation_fee__gte=min_price)
         )
     
     if max_price:
         doctors = doctors.filter(
             Q(consultation_fee_online__lte=max_price) |
-            Q(consultation_fee_in_person__lte=max_price)
+            Q(consultation_fee_in_person__lte=max_price) |
+            Q(hospitals__consultation_fee__lte=max_price)
         )
     
     if search_query:
@@ -59,6 +78,8 @@ def doctor_list(request):
             Q(hospitals__hospital__name__icontains=search_query) |
             Q(hospitals__hospital__city__icontains=search_query)
         ).distinct()
+
+    doctors = doctors.distinct()
     
     # Pagination - 4 doctors per page
     paginator = Paginator(doctors, 4)
@@ -106,10 +127,10 @@ def doctor_detail(request, pk):
     # Get hospitals
     hospitals = doctor.hospitals.filter(is_active=True)
     
-    # Process qualifications - split by | if present
+    # Process qualifications and support multiple separators.
     qualifications_list = []
     if doctor.qualifications:
-        qualifications_list = [q.strip() for q in doctor.qualifications.split('|')]
+        qualifications_list = [q.strip() for q in re.split(r'[|,\n]+', doctor.qualifications) if q.strip()]
     else:
         qualifications_list = ["MBBS (DU)", "MD Cardiology (BSMMU)", "FACC (USA)"]
     
@@ -221,8 +242,23 @@ def remove_from_favorites(request, pk):
 
 def doctors_by_specialty(request, specialty_slug):
     """List doctors by specialty"""
-    specialty = get_object_or_404(Specialty, name__iexact=specialty_slug.replace('-', ' '))
-    doctors = Doctor.objects.filter(specialties=specialty, is_verified=True, is_active=True)
+    specialty = Specialty.objects.filter(is_active=True, name__iexact=specialty_slug.replace('-', ' ')).first()
+    if not specialty:
+        requested = _normalized_slug_token(specialty_slug)
+        for item in Specialty.objects.filter(is_active=True):
+            if _normalized_slug_token(item.name) == requested:
+                specialty = item
+                break
+    if not specialty:
+        specialty = get_object_or_404(Specialty, is_active=True, name__iexact=specialty_slug.replace('-', ' '))
+
+    doctors = Doctor.objects.filter(specialties=specialty, is_verified=True, is_active=True).annotate(
+        lowest_consultation_fee=Coalesce(
+            Min('hospitals__consultation_fee'),
+            F('consultation_fee_in_person'),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
+    )
     
     paginator = Paginator(doctors, 12)
     page_number = request.GET.get('page')

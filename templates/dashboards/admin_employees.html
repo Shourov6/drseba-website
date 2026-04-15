@@ -82,7 +82,8 @@
                         <span class="input-group-text bg-white border-end-0">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" class="form-control border-start-0" id="searchInput" placeholder="Search employees by name, email, phone..." autocomplete="off" onkeyup="searchEmployees()">
+                        <input type="text" class="form-control border-start-0" id="searchInput" placeholder="Search employees by name, email, phone..." autocomplete="off" value="{{ search_query|default:'' }}" onkeyup="searchEmployees()">
+                        <button type="button" class="btn btn-primary" onclick="searchEmployees()">Search</button>
                         <div id="suggestionsDropdown" class="position-absolute bg-white border rounded-bottom shadow-sm" style="top: 100%; left: 0; right: 0; max-width: 500px; display: none; z-index: 1000; max-height: 300px; overflow-y: auto;">
                         </div>
                     </div>
@@ -330,7 +331,11 @@ function displaySuggestions(results) {
         suggestionItem.addEventListener('click', () => {
             document.getElementById('searchInput').value = result.name;
             suggestionsDropdown.style.display = 'none';
-            filterEmployeesBySearch(result.name);
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                filterEmployeesBySearch(result.name);
+            }
         });
 
         suggestionItem.addEventListener('mouseover', () => {

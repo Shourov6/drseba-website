@@ -8,6 +8,7 @@
         <div class="col-md-6">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-5">
+                            <small class="form-text text-muted">Use a Gmail address.</small>
                     <div class="text-center mb-4">
                         <h3 class="fw-bold">Join as a Doctor</h3>
                         <p class="text-muted">Register to connect with patients across Bangladesh</p>
@@ -15,11 +16,6 @@
                     
                     <form method="POST">
                         {% csrf_token %}
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">First Name</label>
-                                {{ form.first_name }}
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Last Name</label>

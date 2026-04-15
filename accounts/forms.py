@@ -2,17 +2,51 @@
 Forms for accounts app
 """
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm
 from django.core.validators import RegexValidator
 from .models import User, PatientProfile
 
 
-class LoginForm(AuthenticationForm):
-    """Custom login form - simplified"""
-    username = forms.CharField(
+def is_gmail_address(value):
+    return bool(value) and value.strip().lower().endswith('@gmail.com')
+
+
+def normalize_bd_phone(country_code, phone_number):
+    country_code = (country_code or '+880').strip()
+    phone_number = ''.join(ch for ch in (phone_number or '') if ch.isdigit())
+
+    if phone_number.startswith('880') and len(phone_number) == 13:
+        phone_number = phone_number[2:]
+
+    if phone_number.startswith('0') and len(phone_number) == 11:
+        return f'{country_code}{phone_number[1:]}'
+
+    if phone_number.startswith('1') and len(phone_number) == 10:
+        return f'{country_code}{phone_number}'
+
+    return ''
+
+
+def generate_unique_username(base_value):
+    base_value = ''.join(ch for ch in (base_value or '').strip().lower() if ch.isalnum() or ch in '._-')
+    if not base_value:
+        base_value = 'user'
+
+    username = base_value[:150]
+    suffix = 1
+    while User.objects.filter(username=username).exists():
+        suffix += 1
+        username = f'{base_value[:140]}{suffix}'[:150]
+    return username
+
+
+class LoginForm(forms.Form):
+    """Login form using phone number or Gmail address"""
+
+    identifier = forms.CharField(
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Username or Email'
+            'placeholder': 'Mobile number or Gmail address'
         })
     )
     password = forms.CharField(
@@ -71,15 +105,20 @@ class PatientRegistrationForm(SimpleUserCreationForm):
         required=True,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Email Address (must be unique)'
+            'placeholder': 'Gmail address (must be unique)'
         })
     )
-    phone = forms.CharField(
-        max_length=20,
+    country_code = forms.ChoiceField(
+        choices=[('+880', '+880')],
+        initial='+880',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    phone_number = forms.CharField(
+        max_length=11,
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Phone Number (optional - any format)'
+            'placeholder': '01XXXXXXXXX'
         })
     )
     password1 = forms.CharField(
@@ -97,35 +136,41 @@ class PatientRegistrationForm(SimpleUserCreationForm):
     
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'phone', 'password1', 'password2']
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.update({
-            'class': 'form-control',
-            'placeholder': 'Username (must be unique)'
-        })
-        self.fields['username'].help_text = 'Letters, digits and @/./+/-/_ only'
+        fields = ['first_name', 'last_name', 'email', 'country_code', 'phone_number', 'password1', 'password2']
     
     def clean_email(self):
         """Check email is unique"""
         email = self.cleaned_data.get('email')
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError("This email is already registered.")
+        if email and not is_gmail_address(email):
+            raise forms.ValidationError("Please use a Gmail address.")
         return email
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('username', None)
     
-    def clean_phone(self):
-        """Check phone is unique if provided"""
-        phone = self.cleaned_data.get('phone')
-        if phone and User.objects.filter(phone=phone).exists():
+    def clean_phone_number(self):
+        """Validate Bangladeshi mobile number"""
+        phone_number = (self.cleaned_data.get('phone_number') or '').strip()
+        if not phone_number:
+            raise forms.ValidationError("Mobile number is required.")
+        if not phone_number.isdigit() or len(phone_number) != 11 or not phone_number.startswith('01'):
+            raise forms.ValidationError("Enter a valid Bangladeshi mobile number with 11 digits, starting with 01.")
+        full_phone = normalize_bd_phone(self.cleaned_data.get('country_code'), phone_number)
+        if not full_phone:
+            raise forms.ValidationError("Enter a valid Bangladeshi mobile number.")
+        if User.objects.filter(phone=full_phone).exists():
             raise forms.ValidationError("This phone number is already registered.")
-        return phone
+        return phone_number
     
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        user.phone = self.cleaned_data.get('phone', '')
+        user.phone = normalize_bd_phone(self.cleaned_data.get('country_code'), self.cleaned_data['phone_number'])
         user.role = 'patient'
+        user.username = generate_unique_username(user.phone or user.email.split('@')[0])
         if commit:
             user.save()
             PatientProfile.objects.create(user=user)
@@ -160,7 +205,7 @@ class DoctorRegistrationForm(UserCreationForm):
         required=True,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Email Address'
+            'placeholder': 'Gmail address'
         })
     )
     phone = forms.CharField(
@@ -199,10 +244,22 @@ class DoctorRegistrationForm(UserCreationForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.update({
-            'class': 'form-control',
-            'placeholder': 'Username'
-        })
+        self.fields.pop('username', None)
+        self.fields['username'] = forms.CharField(required=False, widget=forms.HiddenInput(), initial='')
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        if email and not is_gmail_address(email):
+            raise forms.ValidationError("Please use a Gmail address.")
+        return email
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if phone and not phone.isdigit() and not phone.startswith('+880'):
+            raise forms.ValidationError("Enter a valid phone number.")
+        return phone
     
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -210,6 +267,7 @@ class DoctorRegistrationForm(UserCreationForm):
         user.phone = self.cleaned_data['phone']
         user.role = 'doctor'
         user.is_verified = False  # Doctors need verification
+        user.username = generate_unique_username(user.email.split('@')[0])
         if commit:
             user.save()
         return user
@@ -306,6 +364,8 @@ class EmployeeCreationForm(forms.ModelForm):
         
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError("This email is already registered.")
+        if email and not is_gmail_address(email):
+            raise forms.ValidationError("Please use a Gmail address.")
         
         if password and confirm_password:
             if password != confirm_password:
@@ -318,7 +378,7 @@ class EmployeeCreationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'employee'
-        user.username = self.cleaned_data['email'].split('@')[0]  # Use email prefix as username
+        user.username = generate_unique_username(self.cleaned_data['email'].split('@')[0])
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
@@ -362,6 +422,8 @@ class DoctorCreationForm(forms.ModelForm):
         
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError("This email is already registered.")
+        if email and not is_gmail_address(email):
+            raise forms.ValidationError("Please use a Gmail address.")
         
         if password and confirm_password:
             if password != confirm_password:
@@ -374,7 +436,7 @@ class DoctorCreationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'doctor'
-        user.username = self.cleaned_data['email'].split('@')[0]  # Use email prefix as username
+        user.username = generate_unique_username(self.cleaned_data['email'].split('@')[0])
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()

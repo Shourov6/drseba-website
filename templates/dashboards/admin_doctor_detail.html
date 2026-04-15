@@ -153,8 +153,16 @@
                             
                             <!-- Fourth Row -->
                             <div class="col-md-12">
-                                <label class="form-label text-muted small">Qualification</label>
-                                <p class="mb-0 fw-bold">{{ doctor.qualifications|default:"N/A" }}</p>
+                                <label class="form-label text-muted small">Qualifications</label>
+                                {% if qualifications_list %}
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% for qualification in qualifications_list %}
+                                            <span class="badge bg-light text-dark border">{{ qualification }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="mb-0 fw-bold">N/A</p>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -184,7 +192,7 @@
                                 <div class="col-md-2">
                                     <label class="form-label text-muted small">Days</label>
                                     <p class="mb-0 fw-bold">
-                                        {% for day in schedule.consultation_days %}
+                                        {% for day in schedule.display_days %}
                                             <span class="badge bg-info">{{ day }}</span>
                                         {% empty %}
                                             <span class="text-muted">N/A</span>
@@ -195,15 +203,24 @@
                                 <!-- Time Slot -->
                                 <div class="col-md-2">
                                     <label class="form-label text-muted small">Time</label>
-                                    <p class="mb-0 fw-bold">
-                                        {% if schedule.morning_start and schedule.morning_end %}
-                                            {{ schedule.morning_start|time:"H:i" }} - {{ schedule.morning_end|time:"H:i" }}
-                                        {% elif schedule.evening_start and schedule.evening_end %}
-                                            {{ schedule.evening_start|time:"H:i" }} - {{ schedule.evening_end|time:"H:i" }}
+                                    <div class="mb-0 fw-bold">
+                                        {% if schedule.display_rows %}
+                                            {% for row in schedule.display_rows %}
+                                                <div class="mb-2">
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-light text-dark border">{{ row.day }}</span>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        {{ row.time }}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% elif schedule.display_time and schedule.display_time != 'N/A' %}
+                                            <span>{{ schedule.display_time }}</span>
                                         {% else %}
-                                            N/A
+                                            <span class="text-muted">N/A</span>
                                         {% endif %}
-                                    </p>
+                                    </div>
                                 </div>
                                 
                                 <!-- Contact Number -->
@@ -217,7 +234,7 @@
                                 <!-- Actions -->
                                 <div class="col-md-3 text-end">
                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editScheduleModal" 
-                                        onclick="loadScheduleData({{ schedule.id }}, '{{ schedule.consultation_days|join:',' }}', '{{ schedule.morning_start|time:"H:i" }}', '{{ schedule.morning_end|time:"H:i" }}', '{{ schedule.evening_start|time:"H:i" }}', '{{ schedule.evening_end|time:"H:i" }}')">
+                                        onclick="loadScheduleData({{ schedule.id }}, '{{ schedule.consultation_fee }}', '{{ schedule.service_charge }}')">
                                         <i class="bi bi-pencil me-1"></i>Edit
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger" onclick="removeSchedule({{ schedule.id }})">
@@ -298,7 +315,7 @@
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Qualifications</label>
                             <textarea class="form-control" id="doctorQualifications" name="qualifications" rows="2">{{ doctor.qualifications }}</textarea>
-                            <small class="text-muted">Separate multiple qualifications with a pipe (|)</small>
+                            <small class="text-muted">Use new lines, comma, or | between multiple qualifications.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">New Password</label>
@@ -335,7 +352,7 @@
 
 <!-- Edit Schedule Modal -->
 <div class="modal fade" id="editScheduleModal" tabindex="-1" aria-labelledby="editScheduleLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable schedule-modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold" id="editScheduleLabel">Edit Hospital Schedule</h5>
@@ -347,53 +364,20 @@
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label fw-bold">Consultation Days</label>
-                            <input type="text" class="form-control" id="consultationDays" name="consultation_days" placeholder="e.g., Sun, Tue, Thu" required>
-                            <small class="text-muted">Separate days with commas</small>
+                            <label class="form-label fw-bold">Weekly Working Hours</label>
+                            <div id="editWeeklyScheduleRows" class="border rounded p-2"></div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Morning Start Time</label>
-                            <input type="hidden" id="morningStart" name="morning_start" value="">
-                            <div class="d-flex gap-1 align-items-center">
-                                <select class="form-select" id="morningStartHour" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
-                                <span class="small text-muted">:</span>
-                                <select class="form-select" id="morningStartMinute" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
-                                <select class="form-select" id="morningStartPeriod" onchange="syncEditTime('morningStart', 'morningStartHour', 'morningStartMinute', 'morningStartPeriod')"></select>
-                            </div>
+                            <label class="form-label fw-bold">Consultation Fee</label>
+                            <input type="number" class="form-control" id="editConsultationFee" name="consultation_fee" min="0" step="0.01" value="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Morning End Time</label>
-                            <input type="hidden" id="morningEnd" name="morning_end" value="">
-                            <div class="d-flex gap-1 align-items-center">
-                                <select class="form-select" id="morningEndHour" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
-                                <span class="small text-muted">:</span>
-                                <select class="form-select" id="morningEndMinute" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
-                                <select class="form-select" id="morningEndPeriod" onchange="syncEditTime('morningEnd', 'morningEndHour', 'morningEndMinute', 'morningEndPeriod')"></select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Evening Start Time</label>
-                            <input type="hidden" id="eveningStart" name="evening_start" value="">
-                            <div class="d-flex gap-1 align-items-center">
-                                <select class="form-select" id="eveningStartHour" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
-                                <span class="small text-muted">:</span>
-                                <select class="form-select" id="eveningStartMinute" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
-                                <select class="form-select" id="eveningStartPeriod" onchange="syncEditTime('eveningStart', 'eveningStartHour', 'eveningStartMinute', 'eveningStartPeriod')"></select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Evening End Time</label>
-                            <input type="hidden" id="eveningEnd" name="evening_end" value="">
-                            <div class="d-flex gap-1 align-items-center">
-                                <select class="form-select" id="eveningEndHour" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
-                                <span class="small text-muted">:</span>
-                                <select class="form-select" id="eveningEndMinute" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
-                                <select class="form-select" id="eveningEndPeriod" onchange="syncEditTime('eveningEnd', 'eveningEndHour', 'eveningEndMinute', 'eveningEndPeriod')"></select>
-                            </div>
+                            <label class="form-label fw-bold">Service Charge</label>
+                            <input type="number" class="form-control" id="editServiceCharge" name="service_charge" min="0" step="0.01" value="0">
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer schedule-modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary fw-bold" onclick="submitEditSchedule({{ doctor.id }})">
                         <i class="bi bi-check-lg me-2"></i>Save Changes
@@ -406,18 +390,48 @@
 
 <!-- Add Schedule Modal -->
 <div class="modal fade" id="addScheduleModal" tabindex="-1" aria-labelledby="addScheduleLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable schedule-modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold" id="addScheduleLabel">Add Hospital Schedule</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p class="text-muted">Coming soon...</p>
-            </div>
-            <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+            <form method="POST" id="addScheduleForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Hospital</label>
+                            <select class="form-select" name="hospital_id" required>
+                                <option value="">Select Hospital</option>
+                                {% for hospital in available_hospitals %}
+                                    <option value="{{ hospital.id }}">{{ hospital.name }} ({{ hospital.city }})</option>
+                                {% empty %}
+                                    <option value="" disabled>All active hospitals are already assigned</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Weekly Working Hours</label>
+                            <div id="addWeeklyScheduleRows" class="border rounded p-2"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Consultation Fee</label>
+                            <input type="number" class="form-control" name="consultation_fee" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Service Charge</label>
+                            <input type="number" class="form-control" name="service_charge" min="0" step="0.01" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer schedule-modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="submitAddSchedule({{ doctor.id }})">
+                        <i class="bi bi-plus-lg me-1"></i>Add Schedule
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -444,6 +458,66 @@
     .form-label {
         font-weight: 600;
         color: #374151;
+    }
+
+    .schedule-modal-dialog {
+        max-width: 1080px;
+    }
+
+    .schedule-modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        background: #ffffff;
+        border-top: 1px solid #e9ecef;
+        box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.06);
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .schedule-modal-footer .btn {
+        min-width: 130px;
+    }
+
+    #editWeeklyScheduleRows,
+    #addWeeklyScheduleRows {
+        background: #fbfdff;
+        padding: 0.85rem !important;
+    }
+
+    .schedule-day-row {
+        border: 1px solid #e6edf5;
+        border-radius: 0.55rem;
+        padding: 0.55rem 0.5rem;
+        margin-bottom: 0.5rem !important;
+        background: #ffffff;
+    }
+
+    .schedule-day-row .form-select-sm {
+        min-width: 64px;
+    }
+
+    .schedule-day-row .form-check-label {
+        min-width: 44px;
+    }
+
+    .row-save-btn {
+        min-width: 76px;
+    }
+
+    .schedule-day-row.saved-row {
+        border-color: #198754;
+        background: #f3fbf6;
+    }
+
+    @media (max-width: 991.98px) {
+        .schedule-modal-dialog {
+            max-width: 96vw;
+        }
+
+        .schedule-day-row .form-select-sm {
+            min-width: 58px;
+        }
     }
 </style>
 
@@ -476,100 +550,263 @@ function submitEditDoctor(doctorId) {
     return false;
 }
 
-function loadScheduleData(scheduleId, days, morningStart, morningEnd, eveningStart, eveningEnd) {
-    document.getElementById('scheduleId').value = scheduleId;
-    document.getElementById('consultationDays').value = days;
+const scheduleWeeklyMap = JSON.parse('{{ schedule_weekly_json|escapejs }}');
+const WEEK_DAYS = [
+    { index: 0, short: 'Mon' },
+    { index: 1, short: 'Tue' },
+    { index: 2, short: 'Wed' },
+    { index: 3, short: 'Thu' },
+    { index: 4, short: 'Fri' },
+    { index: 5, short: 'Sat' },
+    { index: 6, short: 'Sun' },
+];
 
-    setEditTimeFromValue('morningStart', morningStart);
-    setEditTimeFromValue('morningEnd', morningEnd);
-    setEditTimeFromValue('eveningStart', eveningStart);
-    setEditTimeFromValue('eveningEnd', eveningEnd);
-}
-
-function buildEditSelectOptions(start, end, padToTwo = false) {
+function buildOptions(start, end) {
     let html = '<option value="">--</option>';
     for (let i = start; i <= end; i++) {
-        const v = padToTwo ? String(i).padStart(2, '0') : String(i);
-        html += `<option value="${v}">${v}</option>`;
+        const value = String(i).padStart(2, '0');
+        html += `<option value="${value}">${value}</option>`;
     }
     return html;
 }
 
-function initializeEditTimeSelects() {
-    const timeFields = ['morningStart', 'morningEnd', 'eveningStart', 'eveningEnd'];
+function renderWeeklyRows(containerId, prefix) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return;
+    }
 
-    timeFields.forEach((base) => {
-        const hour = document.getElementById(`${base}Hour`);
-        const minute = document.getElementById(`${base}Minute`);
-        const period = document.getElementById(`${base}Period`);
+    let html = '';
+    WEEK_DAYS.forEach((day) => {
+        html += `
+            <div class="row g-2 align-items-center mb-2 schedule-day-row" data-day-index="${day.index}" data-prefix="${prefix}">
+                <div class="col-3">
+                    <div class="form-check">
+                        <input class="form-check-input day-check" type="checkbox" id="${prefix}_day_${day.index}" name="day_${day.index}">
+                        <label class="form-check-label fw-bold" for="${prefix}_day_${day.index}">${day.short}</label>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <input type="hidden" id="${prefix}_start_${day.index}" name="start_time_${day.index}" value="">
+                    <div class="d-flex gap-1 align-items-center">
+                        <select class="form-select form-select-sm" id="${prefix}_start_hour_${day.index}">${buildOptions(1, 12)}</select>
+                        <span class="small text-muted">:</span>
+                        <select class="form-select form-select-sm" id="${prefix}_start_minute_${day.index}">${buildOptions(0, 59)}</select>
+                        <select class="form-select form-select-sm" id="${prefix}_start_period_${day.index}"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <input type="hidden" id="${prefix}_end_${day.index}" name="end_time_${day.index}" value="">
+                    <div class="d-flex gap-1 align-items-center">
+                        <select class="form-select form-select-sm" id="${prefix}_end_hour_${day.index}">${buildOptions(1, 12)}</select>
+                        <span class="small text-muted">:</span>
+                        <select class="form-select form-select-sm" id="${prefix}_end_minute_${day.index}">${buildOptions(0, 59)}</select>
+                        <select class="form-select form-select-sm" id="${prefix}_end_period_${day.index}"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
+                    </div>
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-success row-save-btn" id="${prefix}_save_${day.index}" onclick="saveScheduleRow('${prefix}', ${day.index})">Save</button>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
 
-        if (!hour || !minute || !period) {
-            return;
-        }
-
-        hour.innerHTML = buildEditSelectOptions(1, 12, true);
-        minute.innerHTML = buildEditSelectOptions(0, 59, true);
-        period.innerHTML = '<option value="">--</option><option value="AM">AM</option><option value="PM">PM</option>';
+    container.querySelectorAll('select').forEach((selectElement) => {
+        selectElement.addEventListener('change', () => syncRowTimeFromSelectors(selectElement.closest('.schedule-day-row')));
+    });
+    container.querySelectorAll('.day-check').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => syncRowTimeFromSelectors(checkbox.closest('.schedule-day-row')));
     });
 }
 
-function syncEditTime(hiddenId, hourId, minuteId, periodId) {
-    const hidden = document.getElementById(hiddenId);
-    const hour = document.getElementById(hourId)?.value || '';
-    const minute = document.getElementById(minuteId)?.value || '';
-    const period = document.getElementById(periodId)?.value || '';
+function to12HourParts(value24) {
+    if (!value24 || !String(value24).includes(':')) {
+        return null;
+    }
+    const [hourStr, minuteStr] = String(value24).split(':');
+    const hour24 = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    if (Number.isNaN(hour24) || Number.isNaN(minute)) {
+        return null;
+    }
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+    return {
+        hour: String(hour12).padStart(2, '0'),
+        minute: String(minute).padStart(2, '0'),
+        period,
+    };
+}
 
-    if (!hidden) {
+function clearWeeklyRows(prefix) {
+    WEEK_DAYS.forEach((day) => {
+        const checkbox = document.getElementById(`${prefix}_day_${day.index}`);
+        const startHidden = document.getElementById(`${prefix}_start_${day.index}`);
+        const endHidden = document.getElementById(`${prefix}_end_${day.index}`);
+        if (checkbox) checkbox.checked = false;
+        if (startHidden) startHidden.value = '';
+        if (endHidden) endHidden.value = '';
+        ['start', 'end'].forEach((kind) => {
+            const hour = document.getElementById(`${prefix}_${kind}_hour_${day.index}`);
+            const minute = document.getElementById(`${prefix}_${kind}_minute_${day.index}`);
+            const period = document.getElementById(`${prefix}_${kind}_period_${day.index}`);
+            if (hour) hour.value = '';
+            if (minute) minute.value = '';
+            if (period) period.value = '';
+        });
+    });
+}
+
+function setWeeklyEntry(prefix, dayIndex, start24, end24) {
+    const checkbox = document.getElementById(`${prefix}_day_${dayIndex}`);
+    if (!checkbox) {
+        return;
+    }
+    checkbox.checked = true;
+
+    const startParts = to12HourParts(start24);
+    const endParts = to12HourParts(end24);
+    if (startParts) {
+        document.getElementById(`${prefix}_start_hour_${dayIndex}`).value = startParts.hour;
+        document.getElementById(`${prefix}_start_minute_${dayIndex}`).value = startParts.minute;
+        document.getElementById(`${prefix}_start_period_${dayIndex}`).value = startParts.period;
+    }
+    if (endParts) {
+        document.getElementById(`${prefix}_end_hour_${dayIndex}`).value = endParts.hour;
+        document.getElementById(`${prefix}_end_minute_${dayIndex}`).value = endParts.minute;
+        document.getElementById(`${prefix}_end_period_${dayIndex}`).value = endParts.period;
+    }
+
+    const row = document.querySelector(`.schedule-day-row[data-prefix="${prefix}"][data-day-index="${dayIndex}"]`);
+    syncRowTimeFromSelectors(row);
+}
+
+function syncRowTimeFromSelectors(row) {
+    if (!row) {
+        return;
+    }
+    const prefix = row.dataset.prefix;
+    const dayIndex = row.dataset.dayIndex;
+    const checkbox = document.getElementById(`${prefix}_day_${dayIndex}`);
+    const startHour = document.getElementById(`${prefix}_start_hour_${dayIndex}`)?.value || '';
+    const startMinute = document.getElementById(`${prefix}_start_minute_${dayIndex}`)?.value || '';
+    const startPeriod = document.getElementById(`${prefix}_start_period_${dayIndex}`)?.value || '';
+    const endHour = document.getElementById(`${prefix}_end_hour_${dayIndex}`)?.value || '';
+    const endMinute = document.getElementById(`${prefix}_end_minute_${dayIndex}`)?.value || '';
+    const endPeriod = document.getElementById(`${prefix}_end_period_${dayIndex}`)?.value || '';
+
+    const startHidden = document.getElementById(`${prefix}_start_${dayIndex}`);
+    const endHidden = document.getElementById(`${prefix}_end_${dayIndex}`);
+
+    if (!checkbox || !checkbox.checked) {
+        if (startHidden) startHidden.value = '';
+        if (endHidden) endHidden.value = '';
+        setRowUnsaved(prefix, dayIndex);
         return;
     }
 
-    if (hour && minute && period) {
-        hidden.value = `${hour}:${minute} ${period}`;
-    } else {
-        hidden.value = '';
+    if (startHour && startMinute && startPeriod) {
+        startHidden.value = `${startHour}:${startMinute} ${startPeriod}`;
+    }
+    if (endHour && endMinute && endPeriod) {
+        endHidden.value = `${endHour}:${endMinute} ${endPeriod}`;
+    }
+
+    setRowUnsaved(prefix, dayIndex);
+}
+
+function setRowUnsaved(prefix, dayIndex) {
+    const row = document.querySelector(`.schedule-day-row[data-prefix="${prefix}"][data-day-index="${dayIndex}"]`);
+    const button = document.getElementById(`${prefix}_save_${dayIndex}`);
+    if (row) {
+        row.classList.remove('saved-row');
+    }
+    if (button) {
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-success');
+        button.textContent = 'Save';
     }
 }
 
-function setEditTimeFromValue(base, value) {
-    const hidden = document.getElementById(base);
-    const hour = document.getElementById(`${base}Hour`);
-    const minute = document.getElementById(`${base}Minute`);
-    const period = document.getElementById(`${base}Period`);
-
-    if (!hidden || !hour || !minute || !period) {
+function saveScheduleRow(prefix, dayIndex) {
+    const checkbox = document.getElementById(`${prefix}_day_${dayIndex}`);
+    if (!checkbox || !checkbox.checked) {
+        alert('Please check Working for this day first.');
         return;
     }
 
-    if (!value) {
-        hidden.value = '';
-        hour.value = '';
-        minute.value = '';
-        period.value = '';
+    const startHour = document.getElementById(`${prefix}_start_hour_${dayIndex}`)?.value || '';
+    const startMinute = document.getElementById(`${prefix}_start_minute_${dayIndex}`)?.value || '';
+    const startPeriod = document.getElementById(`${prefix}_start_period_${dayIndex}`)?.value || '';
+    const endHour = document.getElementById(`${prefix}_end_hour_${dayIndex}`)?.value || '';
+    const endMinute = document.getElementById(`${prefix}_end_minute_${dayIndex}`)?.value || '';
+    const endPeriod = document.getElementById(`${prefix}_end_period_${dayIndex}`)?.value || '';
+
+    if (!(startHour && startMinute && startPeriod && endHour && endMinute && endPeriod)) {
+        alert('Please select both Start and End times before saving this day.');
         return;
     }
 
-    const parts = String(value).split(':');
-    if (parts.length !== 2) {
-        return;
+    const row = document.querySelector(`.schedule-day-row[data-prefix="${prefix}"][data-day-index="${dayIndex}"]`);
+    syncRowTimeFromSelectors(row);
+
+    const button = document.getElementById(`${prefix}_save_${dayIndex}`);
+    if (row) {
+        row.classList.add('saved-row');
     }
-
-    const hr24 = parseInt(parts[0], 10);
-    const min = parseInt(parts[1], 10);
-
-    if (Number.isNaN(hr24) || Number.isNaN(min)) {
-        return;
+    if (button) {
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-success');
+        button.textContent = 'Saved';
     }
-
-    const selectedPeriod = hr24 >= 12 ? 'PM' : 'AM';
-    const hr12 = hr24 % 12 === 0 ? 12 : (hr24 % 12);
-
-    hour.value = String(hr12).padStart(2, '0');
-    minute.value = String(min).padStart(2, '0');
-    period.value = selectedPeriod;
-    hidden.value = `${hour.value}:${minute.value} ${period.value}`;
 }
 
-document.addEventListener('DOMContentLoaded', initializeEditTimeSelects);
+function loadScheduleData(scheduleId, consultationFee, serviceCharge) {
+    document.getElementById('scheduleId').value = scheduleId;
+    document.getElementById('editConsultationFee').value = consultationFee || '0';
+    document.getElementById('editServiceCharge').value = serviceCharge || '0';
+    clearWeeklyRows('edit');
+    const weeklyEntries = scheduleWeeklyMap[String(scheduleId)] || [];
+    weeklyEntries.forEach((entry) => {
+        setWeeklyEntry('edit', entry.day_index, entry.start, entry.end);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderWeeklyRows('editWeeklyScheduleRows', 'edit');
+    renderWeeklyRows('addWeeklyScheduleRows', 'add');
+    clearWeeklyRows('edit');
+    clearWeeklyRows('add');
+});
+
+function submitAddSchedule(doctorId) {
+    const form = document.getElementById('addScheduleForm');
+    const formData = new FormData(form);
+
+    fetch(`/dashboard/admin/doctors/${doctorId}/schedule/add/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Schedule added successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding schedule');
+    });
+
+    return false;
+}
 
 function submitEditSchedule(doctorId) {
     const scheduleId = document.getElementById('scheduleId').value;

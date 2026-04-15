@@ -75,6 +75,50 @@
                         <h4 class="fw-bold mb-1 dashboard-hero-title">Admin Dashboard</h4>
                         <p class="dashboard-hero-subtitle">Welcome back, Admin</p>
                     </div>
+                    <div class="dropdown notification-dropdown-wrap">
+                        <button class="btn notification-bell-btn {% if unread_notifications_count > 0 %}has-unread{% endif %}" type="button" id="adminNotificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Admin notifications">
+                            <i class="bi bi-bell-fill"></i>
+                            {% if unread_notifications_count > 0 %}
+                                <span class="notification-badge" id="notificationUnreadBadge">{{ unread_notifications_count }}</span>
+                            {% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notification-menu p-0" aria-labelledby="adminNotificationDropdown">
+                            <div class="notification-menu-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                <h6 class="mb-0 fw-bold">Notifications</h6>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted">{{ admin_notifications|length }} items</span>
+                                    {% if unread_notifications_count > 0 %}
+                                    <form method="post" action="{% url 'dashboard:mark_all_admin_notifications_read' %}" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none">Mark all read</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="notification-list">
+                                {% for notification in admin_notifications %}
+                                    <a href="{% url 'dashboard:mark_admin_notification_read' notification.id %}?next={{ notification.target_url|urlencode }}" class="dropdown-item notification-item {% if not notification.is_read %}unread{% endif %}">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <span class="notification-dot notification-{{ notification.notif_type }}"></span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold small mb-1">{{ notification.title }}</div>
+                                                <div class="text-muted small mb-1">{{ notification.message }}</div>
+                                                <small class="text-secondary">{{ notification.created_at|timesince }} ago</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                {% empty %}
+                                    <div class="px-3 py-4 text-center text-muted">
+                                        <i class="bi bi-check2-circle d-block mb-2" style="font-size: 1.4rem;"></i>
+                                        <small>No new notifications</small>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="notification-menu-footer border-top px-3 py-2 text-center">
+                                <a href="{% url 'dashboard:admin_statistics' %}" class="small text-decoration-none">View analytics</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Stats Cards -->
@@ -268,9 +312,157 @@
     </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const bellButton = document.getElementById('adminNotificationDropdown');
+    if (!bellButton) {
+        return;
+    }
+
+    bellButton.addEventListener('show.bs.dropdown', function () {
+        bellButton.classList.remove('has-unread');
+    });
+});
+</script>
+
 <style>
 .list-group-item:hover {
     background-color: #f8f9fa;
+}
+
+.notification-dropdown-wrap {
+    position: relative;
+}
+
+.notification-bell-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    border: 1px solid #d9e2ef;
+    background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 100%);
+    color: #0A74DA;
+    position: relative;
+    box-shadow: 0 8px 24px rgba(10, 116, 218, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notification-bell-btn i {
+    font-size: 1.2rem;
+}
+
+.notification-bell-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(10, 116, 218, 0.18);
+}
+
+.notification-bell-btn.has-unread {
+    animation: bellRing 1.8s ease-in-out infinite;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #dc3545;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    animation: pulseBadge 1.4s infinite;
+}
+
+.notification-menu {
+    width: 390px;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(16, 49, 92, 0.2);
+    overflow: hidden;
+}
+
+.notification-menu-header {
+    background: linear-gradient(135deg, #f6fbff 0%, #eaf3ff 100%);
+}
+
+.notification-list {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #edf2f8;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.notification-item:hover {
+    background-color: #f7fbff;
+    transform: translateX(2px);
+}
+
+.notification-item.unread {
+    background: linear-gradient(90deg, rgba(10, 116, 218, 0.08) 0%, rgba(10, 116, 218, 0.02) 100%);
+}
+
+.notification-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    box-shadow: 0 0 0 4px rgba(10, 116, 218, 0.12);
+    flex-shrink: 0;
+}
+
+.notification-info {
+    background: #0A74DA;
+}
+
+.notification-warning {
+    background: #f59f00;
+}
+
+.notification-success {
+    background: #2f9e44;
+}
+
+@keyframes pulseBadge {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.12);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes bellRing {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    10% {
+        transform: rotate(8deg);
+    }
+    20% {
+        transform: rotate(-8deg);
+    }
+    30% {
+        transform: rotate(6deg);
+    }
+    40% {
+        transform: rotate(-6deg);
+    }
+    50% {
+        transform: rotate(0deg);
+    }
 }
 
 .bg-light {

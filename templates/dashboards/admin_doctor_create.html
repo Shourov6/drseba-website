@@ -72,7 +72,7 @@
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
-                        <form method="post" id="addDoctorForm" action="{% url 'dashboard:create_doctor' %}">
+                        <form method="post" id="addDoctorForm" action="{% url 'dashboard:create_doctor' %}" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="row mb-3">
                                 <div class="col-md-12">
@@ -106,6 +106,22 @@
                             </div>
 
                             <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="dateOfBirth" class="form-label fw-bold">Date of Birth <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="dateOfBirth" name="date_of_birth" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="gender" class="form-label fw-bold">Gender <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="gender" name="gender" required>
+                                        <option value="">Select Gender</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
                                 <div class="col-md-12">
                                     <label for="bmdcNumber" class="form-label fw-bold">BMDC Registration Number <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="bmdcNumber" name="bmdc_number" placeholder="BMDC-12345" required>
@@ -130,8 +146,26 @@
                                     <input type="number" class="form-control" id="experienceYears" name="experience_years" placeholder="5" min="0">
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="qualification" class="form-label fw-bold">Qualification <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="qualification" name="qualification" placeholder="MBBS, MD" required>
+                                    <label for="qualification" class="form-label fw-bold">Qualifications <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="qualification" name="qualification" rows="2" placeholder="MBBS&#10;MD (Cardiology)&#10;FCPS" required></textarea>
+                                    <small class="text-muted">Add multiple qualifications using new lines, comma, or |.</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="doctorPhoto" class="form-label fw-bold">Doctor Photo</label>
+                                    <input type="file" class="form-control" id="doctorPhoto" name="profile_picture" accept=".jpg,.jpeg,.png,.webp,.gif" onchange="previewPhoto(event)">
+                                    <small class="text-muted">Supported: JPG, PNG, WEBP, GIF (Optional)</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3" id="photoPreviewRow" style="display: none;">
+                                <div class="col-md-12">
+                                    <div class="p-3 border rounded" style="background-color: #f8f9fa;">
+                                        <small class="text-muted d-block mb-2">Photo Preview:</small>
+                                        <img id="photoPreview" src="" alt="Photo Preview" style="max-width: 150px; max-height: 150px; border-radius: 8px; object-fit: cover;">
+                                    </div>
                                 </div>
                             </div>
 
@@ -268,6 +302,19 @@ function renderHospitalSchedules() {
         html += `</select>
                 </div>
 
+                <div class="mb-4 row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold mb-2">Consultation Fee <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="consultation_fee_${i}" placeholder="500" min="0" step="0.01" value="500" required>
+                        <small class="text-muted">Consultation fee for this hospital</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold mb-2">Service Charge</label>
+                        <input type="number" class="form-control" name="service_charge_${i}" placeholder="50" min="0" step="0.01" value="50">
+                        <small class="text-muted">Service charge for this hospital</small>
+                    </div>
+                </div>
+
                 <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-calendar-week me-2"></i>Weekly Working Hours</h6>`;
 
         DAYS_OF_WEEK.forEach(day => {
@@ -399,6 +446,42 @@ function markDayDone(hospitalIndex, dayIndex) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', renderHospitalSchedules);
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('photoPreview');
+    const previewRow = document.getElementById('photoPreviewRow');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewRow.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        previewRow.style.display = 'none';
+    }
+}
+
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('photoPreview');
+    const previewRow = document.getElementById('photoPreviewRow');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewRow.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        previewRow.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    renderHospitalSchedules();
+});
 </script>
 {% endblock %}

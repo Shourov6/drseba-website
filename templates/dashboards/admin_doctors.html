@@ -89,6 +89,11 @@
                                 <i class="bi bi-hospital me-2"></i>Hospitals
                             </button>
                         </li>
+                        <li class="nav-item ms-md-2" role="presentation">
+                            <a class="nav-link fw-bold" href="{% url 'dashboard:admin_specialty_create' %}">
+                                <i class="bi bi-plus-lg me-1"></i>Add New Specialty
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 
@@ -102,7 +107,8 @@
                                 <span class="input-group-text bg-white border-end-0">
                                     <i class="bi bi-search"></i>
                                 </span>
-                                <input type="text" class="form-control border-start-0" id="doctorSearchInput" placeholder="Search doctors..." oninput="searchDoctors()">
+                                <input type="text" class="form-control border-start-0" id="doctorSearchInput" placeholder="Search doctors..." autocomplete="off" value="{{ search_query|default:'' }}" oninput="searchDoctors()">
+                                <button type="button" class="btn btn-primary" onclick="searchDoctors()">Search</button>
                                 <ul class="list-group position-absolute w-100" id="doctorSuggestions" style="top: 100%; left: 0; z-index: 1000; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #dee2e6; border-top: none;"></ul>
                             </div>
                         </div>
@@ -203,9 +209,9 @@
                                                         <a href="{% url 'dashboard:admin_doctor_detail' doctor.id %}" class="btn btn-sm btn-link text-primary p-0 me-2" title="View Details">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
-                                                        <form method="post" action="#" style="display: inline;" onsubmit="if(!confirm('Are you sure you want to delete this doctor?')) return false;">
+                                                        <form method="post" action="{% url 'dashboard:delete_doctor' doctor.id %}" style="display: inline;" onsubmit="if(!confirm('Are you sure you want to delete this doctor?')) return false;">
                                                             {% csrf_token %}
-                                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Delete" onclick="alert('Delete functionality coming soon')">
+                                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Delete">
                                                                 <i class="bi bi-trash"></i>
                                                             </button>
                                                         </form>
@@ -234,7 +240,8 @@
                                 <span class="input-group-text bg-white border-end-0">
                                     <i class="bi bi-search"></i>
                                 </span>
-                                <input type="text" class="form-control border-start-0" id="hospitalSearchInput" placeholder="Search hospitals..." oninput="searchHospitals()">
+                                <input type="text" class="form-control border-start-0" id="hospitalSearchInput" placeholder="Search hospitals..." autocomplete="off" value="{{ search_query|default:'' }}" oninput="searchHospitals()">
+                                <button type="button" class="btn btn-primary" onclick="searchHospitals()">Search</button>
                                 <ul class="list-group position-absolute w-100" id="hospitalSuggestions" style="top: 100%; left: 0; z-index: 1000; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #dee2e6; border-top: none;"></ul>
                             </div>
                         </div>
@@ -253,9 +260,12 @@
                                             <button type="button" class="btn btn-sm btn-link text-primary p-0 me-2" title="Edit" data-bs-toggle="modal" data-bs-target="#editHospitalModal" onclick="loadHospitalData({{ hospital.id }}, '{{ hospital.name }}', '{{ hospital.city }}', '{{ hospital.phone }}', '{{ hospital.email }}', {{ hospital.total_beds }}, {{ hospital.icu_beds_available }}, {{ hospital.doctors.count }})">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-link text-danger p-0" title="Delete" onclick="alert('Delete functionality coming soon')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                            <form method="post" action="{% url 'dashboard:delete_hospital' hospital.id %}" style="display: inline;" onsubmit="if(!confirm('Are you sure you want to delete this hospital?')) return false;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
                                     <div class="card-body">
@@ -1105,6 +1115,8 @@ function searchDoctors() {
 
     if (query.length < 1) {
         suggestionsBox.style.display = 'none';
+        suggestionsBox.innerHTML = '';
+        showAllDoctors();
         return;
     }
 
@@ -1113,14 +1125,15 @@ function searchDoctors() {
         .then(data => {
             if (data.success && data.results.length > 0) {
                 displayDoctorSuggestions(data.results, suggestionsBox);
-                suggestionsBox.style.display = 'block';
             } else {
                 suggestionsBox.style.display = 'none';
+                suggestionsBox.innerHTML = '';
             }
+            filterDoctorsTable(query);
         })
         .catch(error => {
             console.error('Error fetching doctor suggestions:', error);
-            suggestionsBox.style.display = 'none';
+            filterDoctorsTable(query);
         });
 }
 
@@ -1134,7 +1147,11 @@ function displayDoctorSuggestions(results, container) {
         item.onclick = () => {
             document.getElementById('doctorSearchInput').value = result.display;
             container.style.display = 'none';
-            filterDoctorsTable(result.display);
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                filterDoctorsTable(result.display);
+            }
         };
         container.appendChild(item);
     });
@@ -1144,14 +1161,26 @@ function displayDoctorSuggestions(results, container) {
 function filterDoctorsTable(searchTerm) {
     const table = document.querySelector('.tab-pane.active .table tbody');
     const rows = table.querySelectorAll('tr');
+    const filter = searchTerm.toLowerCase();
     
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
-        if (text.includes(searchTerm.toLowerCase())) {
+        if (text.includes(filter)) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
         }
+    });
+}
+
+function showAllDoctors() {
+    const table = document.querySelector('#doctors-tab-content .table tbody');
+    if (!table) {
+        return;
+    }
+
+    table.querySelectorAll('tr').forEach(row => {
+        row.style.display = '';
     });
 }
 
@@ -1163,6 +1192,8 @@ function searchHospitals() {
 
     if (query.length < 1) {
         suggestionsBox.style.display = 'none';
+        suggestionsBox.innerHTML = '';
+        showAllHospitals();
         return;
     }
 
@@ -1171,14 +1202,15 @@ function searchHospitals() {
         .then(data => {
             if (data.success && data.results.length > 0) {
                 displayHospitalSuggestions(data.results, suggestionsBox);
-                suggestionsBox.style.display = 'block';
             } else {
                 suggestionsBox.style.display = 'none';
+                suggestionsBox.innerHTML = '';
             }
+            filterHospitalsGrid(query);
         })
         .catch(error => {
             console.error('Error fetching hospital suggestions:', error);
-            suggestionsBox.style.display = 'none';
+            filterHospitalsGrid(query);
         });
 }
 
@@ -1192,7 +1224,11 @@ function displayHospitalSuggestions(results, container) {
         item.onclick = () => {
             document.getElementById('hospitalSearchInput').value = result.display;
             container.style.display = 'none';
-            filterHospitalsGrid(result.display);
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                filterHospitalsGrid(result.display);
+            }
         };
         container.appendChild(item);
     });
@@ -1201,13 +1237,21 @@ function displayHospitalSuggestions(results, container) {
 // Filter Hospitals Grid
 function filterHospitalsGrid(searchTerm) {
     const cards = document.querySelectorAll('#hospitals-tab-content .card');
+    const filter = searchTerm.toLowerCase();
     cards.forEach(card => {
         const text = card.textContent.toLowerCase();
-        if (text.includes(searchTerm.toLowerCase())) {
+        if (text.includes(filter)) {
             card.closest('.col-12').style.display = '';
         } else {
             card.closest('.col-12').style.display = 'none';
         }
+    });
+}
+
+function showAllHospitals() {
+    const cards = document.querySelectorAll('#hospitals-tab-content .col-12');
+    cards.forEach(card => {
+        card.style.display = '';
     });
 }
 
@@ -1223,6 +1267,18 @@ document.addEventListener('click', function(event) {
     }
     if (event.target !== hospitalInput && !hospitalInput.contains(event.target)) {
         hospitalSuggestions.style.display = 'none';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const activeTab = '{{ active_tab|default:"doctors" }}';
+    if (activeTab === 'hospitals') {
+        const hospitalTabButton = document.getElementById('hospitals-tab');
+        if (hospitalTabButton && window.bootstrap && bootstrap.Tab) {
+            bootstrap.Tab.getOrCreateInstance(hospitalTabButton).show();
+        } else if (hospitalTabButton) {
+            hospitalTabButton.click();
+        }
     }
 });
 </script>

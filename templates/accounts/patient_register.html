@@ -35,19 +35,27 @@
                         <div class="mb-3">
                             <label class="form-label">Email Address</label>
                             {{ form.email }}
+                            <small class="form-text text-muted">Use a Gmail address.</small>
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Phone Number</label>
-                            {{ form.phone }}
-                            <small class="form-text text-muted">Format: +8801XXXXXXXXX</small>
+                            <label class="form-label">Bangladesh Mobile Number</label>
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    {{ form.country_code }}
+                                </div>
+                                <div class="col-md-9">
+                                    {{ form.phone_number }}
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Select +880 and enter 11 digits starting with 01, for example 01712345678.</small>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label class="form-label">Password</label>
                             {{ form.password1 }}
                         </div>
-                        
+
                         <div class="mb-4">
                             <label class="form-label">Confirm Password</label>
                             {{ form.password2 }}

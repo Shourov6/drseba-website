@@ -18,6 +18,9 @@ User = get_user_model()
 
 def cleanup_all_demo_data():
     """Remove all demo data from the database"""
+    if os.getenv('ALLOW_DEMO_DATA_RESET', '').lower() != 'yes':
+        print('⚠ Skipping cleanup. Set ALLOW_DEMO_DATA_RESET=yes to allow this script to delete data.')
+        return
     
     print("=" * 80)
     print("CLEANUP: REMOVING ALL DEMO DATA")

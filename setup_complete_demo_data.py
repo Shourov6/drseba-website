@@ -21,6 +21,10 @@ User = get_user_model()
 
 def clear_data():
     """Clear existing demo data"""
+    if os.getenv('ALLOW_DEMO_DATA_RESET', '').lower() != 'yes':
+        print('⚠ Skipping data reset. Set ALLOW_DEMO_DATA_RESET=yes to allow this script to wipe data.')
+        return False
+
     User.objects.all().delete()
     Hospital.objects.all().delete()
     Doctor.objects.all().delete()
@@ -44,6 +48,7 @@ def clear_data():
     ]
     Specialty.objects.filter(name__in=old_specs).delete()
     print("✓ Cleared existing data and old specialty names")
+    return True
 
 def create_admin():
     """Create admin superuser"""
@@ -414,7 +419,9 @@ def main():
     
     print("Step 0: Clearing Old Data")
     print("-" * 40)
-    clear_data()
+    if not clear_data():
+        print("\nStopping before any destructive changes were made.")
+        return
     
     print("\nStep 1: Creating Admin User")
     print("-" * 40)

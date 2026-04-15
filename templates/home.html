@@ -230,7 +230,7 @@
                         </div>
                         <div class="text-end">
                             <small class="text-muted">{{ translations.consultation }}</small>
-                            <p class="fw-bold text-primary mb-0">৳ {{ doctor.consultation_fee|default:"500" }}</p>
+                            <p class="fw-bold text-primary mb-0">৳ {{ doctor.display_in_person_fee }}</p>
                         </div>
                     </div>
                     <div class="d-grid gap-2 d-md-flex">
@@ -272,9 +272,13 @@
                         <img src="{{ hospital.logo.url }}" class="img-fluid" alt="{{ hospital.name }}" style="filter: grayscale(100%); max-height: 80px;">
                     {% else %}
                         <div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #999;">
-                            <p class="mb-0">{{ hospital.name }}</p>
+                            <i class="bi bi-hospital" style="font-size: 2rem;"></i>
                         </div>
                     {% endif %}
+                    <h6 class="fw-bold mt-3 mb-1">{{ hospital.name }}</h6>
+                    <small class="text-muted d-block">
+                        {{ hospital.city }}{% if hospital.district and hospital.district != hospital.city %}, {{ hospital.district }}{% endif %}
+                    </small>
                 </div>
             </div>
             {% endfor %}

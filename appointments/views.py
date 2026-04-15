@@ -12,7 +12,7 @@ from urllib.parse import quote
 from decimal import Decimal
 import json
 from .models import Appointment, CartItem, AppointmentHistory
-from doctors.models import Doctor, DoctorAvailability, DoctorWeeklySchedule, Hospital
+from doctors.models import Doctor, DoctorAvailability, DoctorWeeklySchedule, DoctorHospital, Hospital
 from payments.models import Invoice, DoctorEarning
 
 
@@ -36,6 +36,13 @@ def _format_time_slot_12h(slot_value):
         return slot_value
 
 
+def _availability_time_slot_value(availability):
+    """Return the real time-slot string for an availability, including custom exceptions."""
+    if getattr(availability, 'is_exception', False) and availability.custom_start_time and availability.custom_end_time:
+        return f"{availability.custom_start_time.strftime('%H:%M')}-{availability.custom_end_time.strftime('%H:%M')}"
+    return availability.time_slot
+
+
 def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
     """Generate future availability rows from recurring weekly schedules."""
     weekly_schedules = list(
@@ -48,9 +55,21 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
         return
 
     slot_windows = []
+    seen_slots = set()
+
+    def add_slot_window(slot_start, slot_end):
+        if not slot_start or not slot_end or slot_end <= slot_start:
+            return
+        slot_value = f"{slot_start.strftime('%H:%M')}-{slot_end.strftime('%H:%M')}"
+        if slot_value in seen_slots:
+            return
+        seen_slots.add(slot_value)
+        slot_windows.append((slot_value, slot_start, slot_end))
+
+    # Default 2-hour slots.
     for slot_value, _ in DoctorAvailability.TIME_SLOTS:
         slot_start, slot_end = _parse_slot_window(slot_value)
-        slot_windows.append((slot_value, slot_start, slot_end))
+        add_slot_window(slot_start, slot_end)
 
     exceptions = DoctorAvailability.objects.filter(
         doctor=doctor,
@@ -59,6 +78,46 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
         is_exception=True,
     )
     exception_map = {(ex.hospital_id, ex.date): ex for ex in exceptions}
+
+    # Also support admin dashboard schedules stored in DoctorHospital.
+    doctor_hospital_schedules = list(
+        DoctorHospital.objects.filter(
+            doctor=doctor,
+            is_active=True,
+        ).select_related('hospital')
+    )
+
+    # Include exact windows from schedules so custom times (e.g. 20:00-22:00)
+    # are available even when they are outside default TIME_SLOTS.
+    for schedule in weekly_schedules:
+        add_slot_window(schedule.start_time, schedule.end_time)
+
+    for schedule in doctor_hospital_schedules:
+        add_slot_window(schedule.morning_start, schedule.morning_end)
+        add_slot_window(schedule.evening_start, schedule.evening_end)
+
+    def normalize_weekday(day_value):
+        key = str(day_value or '').strip().lower().replace('.', '')
+        day_map = {
+            'mon': 0,
+            'monday': 0,
+            'tue': 1,
+            'tues': 1,
+            'tuesday': 1,
+            'wed': 2,
+            'wednesday': 2,
+            'thu': 3,
+            'thur': 3,
+            'thurs': 3,
+            'thursday': 3,
+            'fri': 4,
+            'friday': 4,
+            'sat': 5,
+            'saturday': 5,
+            'sun': 6,
+            'sunday': 6,
+        }
+        return day_map.get(key)
 
     total_days = (end_date - start_date).days + 1
     for offset in range(total_days):
@@ -86,7 +145,7 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
                 if slot_end <= schedule.start_time or slot_start >= schedule.end_time:
                     continue
 
-                DoctorAvailability.objects.get_or_create(
+                availability, created = DoctorAvailability.objects.get_or_create(
                     doctor=doctor,
                     hospital_id=schedule.hospital_id,
                     date=current_date,
@@ -98,15 +157,71 @@ def _sync_future_availabilities_from_weekly(doctor, start_date, end_date):
                     },
                 )
 
+                # Re-activate normal generated slots if they were previously disabled.
+                if not created and not availability.is_exception and not availability.is_booked and not availability.is_available:
+                    availability.is_available = True
+                    availability.save(update_fields=['is_available', 'updated_at'])
+
+        # Generate from DoctorHospital consultation_days + morning/evening windows.
+        for schedule in doctor_hospital_schedules:
+            days = schedule.consultation_days or []
+            weekdays_for_schedule = {
+                normalize_weekday(day_label)
+                for day_label in days
+                if normalize_weekday(day_label) is not None
+            }
+
+            if weekday not in weekdays_for_schedule:
+                continue
+
+            exception = exception_map.get((schedule.hospital_id, current_date))
+            if exception:
+                if not exception.is_available:
+                    DoctorAvailability.objects.filter(
+                        doctor=doctor,
+                        hospital_id=schedule.hospital_id,
+                        date=current_date,
+                        is_exception=False,
+                        is_booked=False,
+                    ).update(is_available=False)
+                continue
+
+            time_windows = []
+            if schedule.morning_start and schedule.morning_end:
+                time_windows.append((schedule.morning_start, schedule.morning_end))
+            if schedule.evening_start and schedule.evening_end:
+                time_windows.append((schedule.evening_start, schedule.evening_end))
+
+            for win_start, win_end in time_windows:
+                for slot_value, slot_start, slot_end in slot_windows:
+                    if slot_end <= win_start or slot_start >= win_end:
+                        continue
+
+                    availability, created = DoctorAvailability.objects.get_or_create(
+                        doctor=doctor,
+                        hospital_id=schedule.hospital_id,
+                        date=current_date,
+                        time_slot=slot_value,
+                        defaults={
+                            'is_available': True,
+                            'is_booked': False,
+                            'is_exception': False,
+                        },
+                    )
+
+                    if not created and not availability.is_exception and not availability.is_booked and not availability.is_available:
+                        availability.is_available = True
+                        availability.save(update_fields=['is_available', 'updated_at'])
+
 
 def _sync_doctor_earning(appointment):
     """Create or refresh the doctor's earning entry for an appointment."""
     consultation_amount = appointment.consultation_fee or Decimal('0.00')
     if consultation_amount <= Decimal('0.00'):
-        if appointment.consultation_type == 'online':
-            consultation_amount = appointment.doctor.consultation_fee_online or Decimal('0.00')
-        else:
-            consultation_amount = appointment.doctor.consultation_fee_in_person or Decimal('0.00')
+        consultation_amount = appointment.doctor.get_consultation_fee(
+            appointment.consultation_type,
+            hospital=appointment.hospital,
+        ) or Decimal('0.00')
 
     earning_defaults = {
         'total_amount': consultation_amount,
@@ -175,13 +290,24 @@ def book_appointment(request, doctor_id):
         hospital.id: availabilities.filter(hospital_id=hospital.id).count()
         for hospital in hospitals
     }
+
+    selected_hospital_id = booking.get('hospital_id')
+    if selected_hospital_id and not hospitals.filter(id=selected_hospital_id).exists():
+        selected_hospital_id = None
+
+    if not selected_hospital_id and hospitals.exists():
+        selected_hospital_id = str(hospitals.first().id)
+
+    initial_hospital_availabilities = availabilities.none()
+    if selected_hospital_id:
+        initial_hospital_availabilities = availabilities.filter(hospital_id=selected_hospital_id)
     
     # Serialize availabilities for JavaScript
     availabilities_json = json.dumps([
         {
             'id': av.id,
             'date': av.date.isoformat(),
-            'time_slot': av.time_slot,
+            'time_slot': _availability_time_slot_value(av),
             'hospital_id': av.hospital.id,
             'hospital_name': av.hospital.name,
         }
@@ -192,8 +318,10 @@ def book_appointment(request, doctor_id):
         'doctor': doctor,
         'step': step,
         'availabilities': availabilities,
+        'initial_hospital_availabilities': initial_hospital_availabilities,
         'availabilities_json': availabilities_json,
         'hospitals': hospitals,
+        'selected_hospital_id': selected_hospital_id,
         'hospital_slot_counts': hospital_slot_counts,
         'booking': booking,
         'service_charge': 50,
@@ -221,17 +349,17 @@ def book_appointment(request, doctor_id):
                 'doctor': doctor,
                 'hospital': availability.hospital,
                 'date': availability.date,
-                'time_slot': availability.time_slot,
+                'time_slot': _availability_time_slot_value(availability),
                 'consultation_type': current_booking.get('consultation_type') or 'in_person',
                 'payment_method': (current_booking.get('payment_method') or '').lower(),
                 'status': 'pending',
                 'symptoms': current_booking.get('symptoms', ''),
             }
 
-            if appointment_payload['consultation_type'] == 'online':
-                consultation_fee = doctor.consultation_fee_online or Decimal('0.00')
-            else:
-                consultation_fee = doctor.consultation_fee_in_person or Decimal('0.00')
+            consultation_fee = doctor.get_consultation_fee(
+                appointment_payload['consultation_type'],
+                hospital=availability.hospital,
+            ) or Decimal('0.00')
 
             service_fee = Decimal('50.00')
             appointment_payload['consultation_fee'] = consultation_fee
@@ -280,6 +408,9 @@ def book_appointment(request, doctor_id):
         if selected_availability:
             selected_hospital = selected_availability.hospital
             context['selected_availability'] = selected_availability
+            context['selected_time_slot_display'] = _format_time_slot_12h(
+                _availability_time_slot_value(selected_availability)
+            )
 
     if not selected_hospital and booking.get('hospital_id'):
         selected_hospital = Hospital.objects.filter(id=booking.get('hospital_id')).first()
@@ -561,10 +692,10 @@ def add_to_cart(request, availability_id):
     symptoms = request.POST.get('symptoms', '')
     
     # Calculate fees
-    if consultation_type == 'online':
-        consultation_fee = availability.doctor.consultation_fee_online
-    else:
-        consultation_fee = availability.doctor.consultation_fee_in_person
+    consultation_fee = availability.doctor.get_consultation_fee(
+        consultation_type,
+        hospital=availability.hospital,
+    )
     
     # Service fee based on location (simplified)
     service_fee = 50  # Base service fee
@@ -752,10 +883,10 @@ def appointment_detail(request, appointment_id):
     service_fee_display = appointment.service_fee or Decimal('0.00')
     total_amount_display = appointment.total_amount or Decimal('0.00')
 
-    if appointment.consultation_type == 'online':
-        expected_consultation_fee = appointment.doctor.consultation_fee_online or Decimal('0.00')
-    else:
-        expected_consultation_fee = appointment.doctor.consultation_fee_in_person or Decimal('0.00')
+    expected_consultation_fee = appointment.doctor.get_consultation_fee(
+        appointment.consultation_type,
+        hospital=appointment.hospital,
+    ) or Decimal('0.00')
 
     fields_to_update = []
     if consultation_fee_display <= Decimal('0.00'):

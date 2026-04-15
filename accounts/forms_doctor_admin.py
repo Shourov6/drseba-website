@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from doctors.models import Doctor, Specialty
+from .forms import is_gmail_address, generate_unique_username
 
 User = get_user_model()
 
@@ -44,6 +45,8 @@ class DoctorAdminCreationForm(forms.ModelForm):
             raise forms.ValidationError('Passwords do not match.')
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError('This email is already registered.')
+        if email and not is_gmail_address(email):
+            raise forms.ValidationError('Please use a Gmail address.')
         return cleaned_data
 
     def save(self, commit=True):
@@ -54,7 +57,7 @@ class DoctorAdminCreationForm(forms.ModelForm):
             email=self.cleaned_data['email'],
             phone=self.cleaned_data['phone'],
             role='doctor',
-            username=self.cleaned_data['email'].split('@')[0],
+            username=generate_unique_username(self.cleaned_data['email'].split('@')[0]),
             is_active=self.cleaned_data.get('is_active', True),
         )
         user.set_password(self.cleaned_data['password'])
